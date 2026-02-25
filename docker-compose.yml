@@ -36,6 +36,7 @@ services:
     volumes:
       - zomboid-server:/home/steam/ZomboidDedicatedServer
       - zomboid-data:/home/steam/Zomboid
+      - ./game-server/edit_server_config.py:/home/steam/edit_server_config.py:ro
     networks:
       - zomboid-net
     healthcheck:
