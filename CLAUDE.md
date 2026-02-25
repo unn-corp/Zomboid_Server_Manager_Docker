@@ -18,43 +18,60 @@ Project Zomboid managed dedicated server for the Georgian gaming community. Dock
 - **Testing:** Pest PHP 3
 - **Routing:** Wayfinder (TypeScript route generation)
 - **Payments (Stage 4):** Laravel Cashier (Stripe)
-- **Containers:** Docker Compose v2
+- **Containers:** Docker Compose v2 with multi-arch support (ARM64 + AMD64)
 
 ## Commands
 
 ```bash
-# Full stack
-docker compose up -d
-docker compose down
+# Full stack (auto-detects ARM64/AMD64)
+make up
+make down
+make logs
+make ps
 
 # Migrations
-docker compose exec app php artisan migrate
-docker compose exec app php artisan migrate:rollback
+make migrate
+make exec CMD="php artisan migrate:rollback"
 
 # Tests
-docker compose exec app php artisan test                    # all tests
-docker compose exec app php artisan test --filter=UnitTest  # single test
-docker compose exec app php artisan test --group=rcon       # RCON integration tests (needs live server)
+make test
+make exec CMD="php artisan test --filter=UnitTest"
+make exec CMD="php artisan test --group=rcon"
 
 # Queue & Scheduler
-docker compose exec app php artisan queue:work --tries=3
-docker compose exec app php artisan schedule:run
+make exec CMD="php artisan queue:work --tries=3"
+make exec CMD="php artisan schedule:run"
 
 # API docs
-docker compose exec app php artisan scribe:generate
+make exec CMD="php artisan scribe:generate"
 
 # Cache
-docker compose exec app php artisan config:clear && php artisan cache:clear
+make exec CMD="php artisan config:clear"
+
+# Check detected architecture
+make arch
 ```
 
 ## Architecture
 
-Four Docker services in `docker-compose.yml`:
+### Docker Compose — Multi-Arch Setup
 
-1. **game-server** — PZ dedicated server (SteamCMD image). Ports 16261-16262/udp exposed to host. RCON on 27015/tcp internal only.
-2. **app** — Laravel (PHP-FPM + Nginx or FrankenPHP). Mounts Docker socket for container lifecycle control. Mounts PZ data volumes for config/save file access. Connects to game server via RCON over internal Docker network.
+The stack uses compose overrides for automatic architecture detection:
+- `docker-compose.yml` — base config (app, db, redis, networks, volumes, game-server skeleton)
+- `docker-compose.arm64.yml` — ARM64 game server (`ghcr.io/joyfui/project-zomboid-server-docker-arm64`) with custom entrypoint + `configure-server.sh`
+- `docker-compose.amd64.yml` — AMD64 game server (`renegademaster/zomboid-dedicated-server`) with native env var mapping
+- `Makefile` — detects `uname -m` and selects the correct override automatically
+
+### Services
+
+Four Docker services:
+
+1. **game-server** — PZ dedicated server (SteamCMD). Ports 16261-16262/udp exposed to host. RCON on 27015/tcp internal only. Image varies by architecture.
+2. **app** — Laravel (PHP-FPM + Nginx). Mounts Docker socket for container lifecycle control. Mounts PZ data volumes for config/save file access. Connects to game server via RCON over internal Docker network.
 3. **db** — PostgreSQL. Internal only.
 4. **redis** — Queue driver, cache, rate limiting. Internal only.
+
+### Integration Points
 
 The Laravel app is the single control plane wrapping three integration points:
 - **RCON** (`Services/RconClient.php`) — Source RCON TCP protocol. Player commands, broadcasts, saves. Singleton in service container.
