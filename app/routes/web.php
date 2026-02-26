@@ -17,7 +17,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('portal', PortalController::class)->name('portal');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->group(function () {

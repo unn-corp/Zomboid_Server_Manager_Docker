@@ -12,6 +12,11 @@ if [ -S /var/run/docker.sock ]; then
     addgroup www-data "$DOCKER_GROUP" 2>/dev/null || true
 fi
 
+# ── Storage permissions ──────────────────────────────────────────────
+# Bind mounts override Dockerfile permissions — fix at runtime
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+
 # ── APP_KEY generation ───────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     echo "[entrypoint] Generating APP_KEY..."

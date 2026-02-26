@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 
 function adminUser(): User
 {
-    return User::factory()->create();
+    return User::factory()->admin()->create();
 }
 
 function mockAdminRcon(array $commands = []): void
@@ -344,4 +344,26 @@ it('requires auth for all admin pages', function () {
     $this->get('/admin/backups')->assertRedirect('/login');
     $this->get('/admin/whitelist')->assertRedirect('/login');
     $this->get('/admin/audit')->assertRedirect('/login');
+});
+
+it('blocks players from admin pages', function () {
+    $player = User::factory()->create(['role' => \App\Enums\UserRole::Player]);
+
+    $this->actingAs($player)->get('/dashboard')->assertForbidden();
+    $this->actingAs($player)->get('/admin/players')->assertForbidden();
+    $this->actingAs($player)->get('/admin/config')->assertForbidden();
+    $this->actingAs($player)->get('/admin/mods')->assertForbidden();
+    $this->actingAs($player)->get('/admin/backups')->assertForbidden();
+    $this->actingAs($player)->get('/admin/whitelist')->assertForbidden();
+    $this->actingAs($player)->get('/admin/audit')->assertForbidden();
+    $this->actingAs($player)->get('/admin/rcon')->assertForbidden();
+    $this->actingAs($player)->get('/admin/logs')->assertForbidden();
+});
+
+it('allows moderators to access admin pages', function () {
+    mockAdminRcon(['players' => "Players connected (0):\n"]);
+
+    $moderator = User::factory()->create(['role' => \App\Enums\UserRole::Moderator]);
+
+    $this->actingAs($moderator)->get('/admin/players')->assertOk();
 });

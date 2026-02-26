@@ -1,9 +1,9 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
     Archive,
     BookOpen,
-    Folder,
+    Gamepad2,
     LayoutGrid,
     Package,
     ScrollText,
@@ -24,11 +24,11 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import type { NavItem } from '@/types';
+import type { Auth, NavItem } from '@/types';
 import AppLogo from './app-logo';
 import { dashboard } from '@/routes';
 
-const mainNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -76,6 +76,14 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const playerNavItems: NavItem[] = [
+    {
+        title: 'Player Portal',
+        href: '/portal',
+        icon: Gamepad2,
+    },
+];
+
 const footerNavItems: NavItem[] = [
     {
         title: 'Server Status',
@@ -89,14 +97,20 @@ const footerNavItems: NavItem[] = [
     },
 ];
 
+const adminRoles = ['super_admin', 'admin', 'moderator'];
+
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isAdmin = adminRoles.includes(auth.user.role);
+    const navItems = isAdmin ? adminNavItems : playerNavItems;
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href={isAdmin ? dashboard() : '/portal'} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -105,7 +119,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={navItems} />
             </SidebarContent>
 
             <SidebarFooter>

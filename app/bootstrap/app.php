@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.apikey' => \App\Http\Middleware\ApiKeyAuth::class,
             'audit' => \App\Http\Middleware\AuditApiActions::class,
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
         $middleware->api(prepend: [

@@ -49,7 +49,7 @@ function mockDockerForLogs(array $lines = []): void
 // --- RCON Console ---
 
 it('renders the RCON console page', function () {
-    $response = $this->actingAs(User::factory()->create())->get('/admin/rcon');
+    $response = $this->actingAs(User::factory()->admin()->create())->get('/admin/rcon');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page->component('admin/rcon'));
@@ -58,7 +58,7 @@ it('renders the RCON console page', function () {
 it('executes an RCON command', function () {
     mockRconConsole(['players' => "Players connected (1):\n-TestPlayer\n"]);
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/rcon', ['command' => 'players']);
 
     $response->assertOk();
@@ -69,7 +69,7 @@ it('executes an RCON command', function () {
 it('handles RCON offline on console', function () {
     mockRconConsoleOffline();
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/rcon', ['command' => 'players']);
 
     $response->assertStatus(503);
@@ -77,7 +77,7 @@ it('handles RCON offline on console', function () {
 });
 
 it('validates RCON command is required', function () {
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/rcon', ['command' => '']);
 
     $response->assertUnprocessable();
@@ -88,7 +88,7 @@ it('validates RCON command is required', function () {
 it('renders the logs page', function () {
     mockDockerForLogs(['[2026-02-26] Server started', '[2026-02-26] World loaded']);
 
-    $response = $this->actingAs(User::factory()->create())->get('/admin/logs');
+    $response = $this->actingAs(User::factory()->admin()->create())->get('/admin/logs');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
@@ -100,7 +100,7 @@ it('renders the logs page', function () {
 it('fetches logs via JSON endpoint', function () {
     mockDockerForLogs(['line 1', 'line 2', 'line 3']);
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->getJson('/admin/logs/fetch?tail=50');
 
     $response->assertOk();
@@ -120,7 +120,7 @@ it('can start the server from dashboard', function () {
         'started_at' => null, 'finished_at' => null, 'restart_count' => 0,
     ]);
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/server/start');
 
     $response->assertOk();
@@ -131,7 +131,7 @@ it('can stop the server from dashboard', function () {
     mockDockerForLogs();
     mockRconConsole();
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/server/stop');
 
     $response->assertOk();
@@ -142,7 +142,7 @@ it('can restart the server from dashboard', function () {
     mockDockerForLogs();
     mockRconConsole();
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/server/restart');
 
     $response->assertOk();
@@ -152,7 +152,7 @@ it('can restart the server from dashboard', function () {
 it('can save the world from dashboard', function () {
     mockRconConsole();
 
-    $response = $this->actingAs(User::factory()->create())
+    $response = $this->actingAs(User::factory()->admin()->create())
         ->postJson('/admin/server/save');
 
     $response->assertOk();

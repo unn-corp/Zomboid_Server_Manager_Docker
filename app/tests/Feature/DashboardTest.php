@@ -61,7 +61,7 @@ it('renders the dashboard for authenticated users', function () {
     mockDashboardDocker();
     mockDashboardRcon(['players' => "Players connected (0):\n"]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -78,7 +78,7 @@ it('shows server status on the dashboard', function () {
     mockDashboardDocker();
     mockDashboardRcon(['players' => "Players connected (3):\n-Alice\n-Bob\n-Charlie\n"]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -102,7 +102,7 @@ it('shows recent audit log entries', function () {
         'created_at' => now(),
     ]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -126,7 +126,7 @@ it('shows backup summary on the dashboard', function () {
         'created_at' => now(),
     ]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -142,7 +142,7 @@ it('handles offline server gracefully on dashboard', function () {
     mockDashboardDocker(['running' => false, 'status' => 'exited']);
     mockDashboardRconOffline();
 
-    $user = User::factory()->create();
+    $user = User::factory()->admin()->create();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
