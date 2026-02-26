@@ -139,17 +139,22 @@ To start fresh with new secrets:
 ```bash
 make down
 rm .env
+make db-check || make db-init
 make up
 ```
 
-To wipe all data (database, game saves, backups):
+To wipe all data (database, game saves, backups), use the guarded command:
 
 ```bash
-make down
-docker volume rm pz-data pz-postgres pz-redis pz-backups pz-server-files
-rm .env
-make up
+make nuke
 ```
+
+Important safety behavior:
+
+- `make up` now refuses to start if `pz-postgres` is missing (prevents silent empty DB recreation).
+- Use `make db-init` only for first run (creates empty `pz-postgres` volume).
+- Use `make db-reset` only when you intentionally want a brand-new empty database.
+- Use `make db-restore` to restore from the newest SQL dump in `db-backups/`.
 
 ## API
 
