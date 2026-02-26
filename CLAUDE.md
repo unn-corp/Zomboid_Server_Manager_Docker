@@ -95,4 +95,58 @@ Detailed plan with acceptance criteria in `IMPLEMENTATION_PLAN.md`. Status track
 
 **Stage 1 (MVP) — Phases 1–8:** Docker infra, Laravel + RCON, audit DB, server/config/player/mod API endpoints, Pest tests
 **Stage 2 — Phases 9–12:** Backup/rollback (Laravel Queue + Scheduler), whitelist CRUD, schema expansion
-**Stage 3+ — Phases 13+:** React/Inertia web dashboard, Cashier subscriptions, item shop
+**Stage 3 — Phases 13–15:** React/Inertia web dashboard
+**Stage 4 — Phases 16+:** User registration, config UX improvements, deployment hardening
+**Final Stages:** Cashier subscriptions, item shop (monetization deferred to end)
+
+## Package Versions
+
+- php 8.3, laravel/framework v12, inertiajs/inertia-laravel v2, laravel/fortify v1
+- laravel/wayfinder v0, laravel/pint v1, pestphp/pest v3, phpunit/phpunit v11
+- @inertiajs/react v2, react v19, tailwindcss v4, eslint v9, prettier v3
+
+## Laravel Conventions
+
+### PHP
+- Always use curly braces for control structures, even for single-line bodies
+- Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`
+- Always use explicit return type declarations and type hints
+- Enum keys should be TitleCase
+- Prefer PHPDoc blocks over inline comments
+
+### Database & Eloquent
+- Prefer `Model::query()` over `DB::` facade
+- Use eager loading to prevent N+1 query problems
+- Use Eloquent API Resources for API responses
+- When modifying a column in migration, include ALL previously defined attributes
+- Casts should use `casts()` method on models (not `$casts` property)
+
+### Controllers & Validation
+- Create Form Request classes for validation (not inline in controllers)
+- Use `php artisan make:` commands to create new files, pass `--no-interaction`
+- Use environment variables only in config files — never `env()` directly outside config
+
+### Testing (Pest)
+- Create tests: `php artisan make:test --pest {name}`, `--unit` for unit tests
+- Run tests: `php artisan test --compact` or `--filter=testName`
+- Use factories for model creation in tests
+- Do NOT delete tests without approval
+
+### Code Formatting
+- Run `vendor/bin/pint --dirty --format agent` after modifying PHP files
+
+### Inertia.js v2
+- Components live in `resources/js/pages`
+- Use `Inertia::render()` for server-side routing
+- v2 features: deferred props, infinite scroll, merging props, polling, prefetching
+- When using deferred props, add skeleton/loading state
+
+### Wayfinder
+- Import from `@/actions/` (controllers) or `@/routes/` (named routes)
+- Use `.form()` with `<Form>` component or `form.submit(store())` with useForm
+
+### General
+- Follow existing code conventions — check sibling files for structure and naming
+- Check for existing components to reuse before writing new ones
+- Stick to existing directory structure; don't create new base folders without approval
+- Do not change dependencies without approval

@@ -535,17 +535,87 @@ Inertia web controllers consume existing services directly (RconClient, DockerMa
 
 ## Future Phases (Outlined, Not Detailed)
 
-### Phase 16–18: Subscriptions (Stage 4)
+### Phase 16: Player Registration & PZ Account Sync (Stage 4)
+
+Bidirectional account sync — same username + password works on both web and game server.
+
+**Registration flow (Web → PZ):**
+- Registration form: username (required, unique) + password (required) + email (optional)
+- Username validated for uniqueness against both `users` table and `serverPZ.db`
+- On register: create web User + auto-create PZ account in `serverPZ.db` via `WhitelistManager::add()`
+- Link `WhitelistEntry` to `User` via `user_id`
+- Web login uses username + password (not email)
+- If email provided → send verification email (Fortify email verification flow)
+
+**Auto-sync (PZ → Web):**
+- Scheduled job (`SyncPzAccounts`) runs periodically, reads `serverPZ.db`
+- New SQLite entries without a matching User → auto-create web User with same username + password (plain text from PZ)
+- Email left null — auto-synced users can add email later in profile
+- Link `WhitelistEntry` to auto-created `User`
+- Skip any username that already exists in `users` table (no duplicates)
+
+**Email verification:**
+- Email is optional at registration and for auto-synced accounts
+- When a user adds/changes email → verification email sent
+- Verified badge shown in profile; unverified email gets periodic reminder
+- Admin pages still require `verified` middleware (admins must have verified email)
+- Player-facing pages accessible without verified email
+
+**Player portal:**
+- React/Inertia page: PZ account status, change password (syncs to both PostgreSQL + `serverPZ.db`)
+- Add/update email with verification
+- Show whitelist status, online/offline (if available via RCON)
+
+**Key constraints:**
+- Username is the primary login field (not email)
+- Usernames unique across both databases
+- Password changes on web update `serverPZ.db` plain text too (PZ limitation)
+- Password changes in-game picked up by next sync run
+
+**Tests:**
+- Web registration creates PZ account in SQLite
+- In-game account auto-synced to web User
+- Username uniqueness enforced in both directions
+- Password change syncs to both databases
+- Email verification flow (optional email, send verification, verify link)
+- Login with username + password (not email)
+
+### Phase 17: Config Page UX Overhaul (Stage 4)
+
+Replace flat text inputs with smart, grouped, collapsible config sections.
+
+- **Config metadata system:** Define each setting's type (boolean, number, string, enum), description, default value, and group
+- **Server.ini groups:** General, Network, Players, Security, World, Advanced — each as a collapsible `<Collapsible>` section
+- **SandboxVars groups:** Zombie Lore, Time & Seasons, World, Loot, Vehicle, Meta — collapsible sections
+- **Smart input types:**
+  - Boolean settings → `<Switch>` toggles (e.g., `PauseEmpty`, `SteamVAC`, `Open`)
+  - Enum settings → `<Select>` dropdowns (e.g., zombie speed, difficulty presets)
+  - Numeric settings → `<Input type="number">` with min/max validation (e.g., `MaxPlayers`, `SaveWorldEveryMinutes`)
+  - String settings → `<Input type="text">` (e.g., `Password`, `ServerName`)
+  - Semicolon lists → read-only display (Mods/WorkshopItems managed on Mods page)
+- **Descriptions:** Help text under each input explaining what the setting does
+- **Search/filter:** Quick filter to find settings by name
+- **Sensitive fields:** Hide `RCONPassword`, `AdminPassword` behind reveal toggles
+- **shadcn/ui components:** Collapsible, Switch, Select, Tooltip, Input, Badge
+- **Tests:** Config renders with correct input types, save still works, grouping correct
+
+### Phase 18: Dashboard & UX Polish (Stage 4)
+
+- Improved responsive layout for mobile/tablet
+- Toast notifications for all admin actions (save, restart, kick, etc.)
+- Loading skeletons for deferred props
+- Quick-action cards on dashboard (restart, save, player count, mod count)
+- Error boundary pages (404, 500, maintenance)
+
+### Phase 19+: Subscriptions (Stage 5 — Monetization)
 
 - Laravel Cashier (Stripe) for subscription management
-- Player registration with Fortify session auth
 - Subscription lifecycle (Cashier handles most of this)
 - Auto whitelist sync via Cashier webhook events
-- Player portal (React + Inertia pages)
 - Admin subscription management page
 - Scheduled command for periodic sub status checks
 
-### Phase 19–21: Item Shop (Stage 5)
+### Phase 20+: Item Shop (Stage 6 — Monetization)
 
 - Shop item CRUD (Eloquent models + admin React/Inertia UI)
 - Player shop page with categories (React + Inertia)
@@ -662,3 +732,8 @@ php artisan scribe:generate
 | Phase 13 — Public Pages + Dashboard | DONE | Landing page, /status page with polling, dashboard overview, branding, 8 new tests |
 | Phase 14 — Admin Management Pages | DONE | 6 admin pages (players, config, mods, backups, whitelist, audit), 19 new tests |
 | Phase 15 — RCON Console + Live Logs | DONE | RCON console, live log viewer, server start/stop/restart/save controls, 11 new tests |
+| Phase 16 — Player Registration + PZ Sync | TODO | Web registration → auto PZ account, password sync, player portal |
+| Phase 17 — Config Page UX Overhaul | TODO | Smart inputs (toggles, selects, numbers), grouped collapsible sections, descriptions |
+| Phase 18 — Dashboard & UX Polish | TODO | Mobile responsive, toasts, skeletons, error boundaries |
+| Phase 19+ — Subscriptions | TODO | Cashier/Stripe (deferred — monetization) |
+| Phase 20+ — Item Shop | TODO | Shop CRUD, payments (deferred — monetization) |
