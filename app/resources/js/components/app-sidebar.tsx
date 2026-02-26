@@ -1,5 +1,17 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import {
+    Activity,
+    Archive,
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    Package,
+    ScrollText,
+    Shield,
+    Terminal,
+    Users,
+    Wrench,
+} from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -22,17 +34,57 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+    {
+        title: 'Players',
+        href: '/admin/players',
+        icon: Users,
+    },
+    {
+        title: 'Config',
+        href: '/admin/config',
+        icon: Wrench,
+    },
+    {
+        title: 'Mods',
+        href: '/admin/mods',
+        icon: Package,
+    },
+    {
+        title: 'Backups',
+        href: '/admin/backups',
+        icon: Archive,
+    },
+    {
+        title: 'Whitelist',
+        href: '/admin/whitelist',
+        icon: Shield,
+    },
+    {
+        title: 'Audit Log',
+        href: '/admin/audit',
+        icon: ScrollText,
+    },
+    {
+        title: 'RCON Console',
+        href: '/admin/rcon',
+        icon: Terminal,
+    },
+    {
+        title: 'Server Logs',
+        href: '/admin/logs',
+        icon: Activity,
+    },
 ];
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
+        title: 'Server Status',
+        href: '/status',
+        icon: Activity,
     },
     {
         title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
+        href: 'https://laravel.com/docs',
         icon: BookOpen,
     },
 ];

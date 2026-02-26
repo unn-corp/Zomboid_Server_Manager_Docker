@@ -1,7 +1,18 @@
-import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { Head, usePoll } from '@inertiajs/react';
+import {
+    Archive,
+    Circle,
+    Clock,
+    HardDrive,
+    Map,
+    ScrollText,
+    Users,
+} from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import type { BreadcrumbItem, DashboardData } from '@/types';
 import { dashboard } from '@/routes';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -11,24 +22,167 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({
+    server,
+    recent_audit,
+    backup_summary,
+}: DashboardData) {
+    usePoll(5000, { only: ['server'] });
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 lg:p-6">
+                {/* Server Status Banner */}
+                <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-4">
+                    <Circle
+                        className={`size-4 fill-current ${server.online ? 'text-green-500' : 'text-red-500'}`}
+                    />
+                    <div>
+                        <span className="font-semibold">
+                            Server {server.online ? 'Online' : 'Offline'}
+                        </span>
+                        {server.online && server.uptime && (
+                            <span className="ml-2 text-sm text-muted-foreground">
+                                Uptime: {server.uptime}
+                            </span>
+                        )}
                     </div>
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+
+                {/* Stats Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Players Online</CardTitle>
+                            <Users className="size-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {server.player_count}
+                                {server.max_players !== null && (
+                                    <span className="text-base font-normal text-muted-foreground">
+                                        /{server.max_players}
+                                    </span>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Map</CardTitle>
+                            <Map className="size-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="truncate text-2xl font-bold">{server.map || 'N/A'}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Backups</CardTitle>
+                            <Archive className="size-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{backup_summary.total_count}</div>
+                            <p className="text-xs text-muted-foreground">{backup_summary.total_size_human} total</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Last Backup</CardTitle>
+                            <HardDrive className="size-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="truncate text-2xl font-bold">
+                                {backup_summary.last_backup
+                                    ? new Date(backup_summary.last_backup.created_at).toLocaleDateString()
+                                    : 'Never'}
+                            </div>
+                            {backup_summary.last_backup && (
+                                <p className="text-xs text-muted-foreground">
+                                    {backup_summary.last_backup.size_human} ({backup_summary.last_backup.type})
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Online Players */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="size-5" />
+                                Online Players
+                            </CardTitle>
+                            <CardDescription>
+                                {server.player_count} connected
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {server.players.length > 0 ? (
+                                <div className="space-y-2">
+                                    {server.players.map((player) => (
+                                        <div
+                                            key={player}
+                                            className="flex items-center gap-2 rounded-md border border-border/50 px-3 py-2"
+                                        >
+                                            <Circle className="size-2 fill-green-500 text-green-500" />
+                                            <span className="text-sm font-medium">{player}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    {server.online ? 'No players online' : 'Server is offline'}
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Recent Activity */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ScrollText className="size-5" />
+                                Recent Activity
+                            </CardTitle>
+                            <CardDescription>Latest admin actions</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {recent_audit.length > 0 ? (
+                                <div className="space-y-3">
+                                    {recent_audit.map((entry) => (
+                                        <div key={entry.id} className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="shrink-0 text-xs">
+                                                        {entry.action}
+                                                    </Badge>
+                                                    {entry.target && (
+                                                        <span className="truncate text-sm text-muted-foreground">
+                                                            {entry.target}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                    {entry.actor}
+                                                    {entry.created_at && (
+                                                        <> &middot; {new Date(entry.created_at).toLocaleString()}</>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No recent activity</p>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </AppLayout>

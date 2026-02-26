@@ -436,19 +436,104 @@ Zomboid/
 
 ---
 
+## Phase 13 — Public Pages & Dashboard Overview (Stage 3 Start)
+
+**Goal:** Landing page for players, public server status page, and admin dashboard overview with real data.
+
+### Architecture
+
+Inertia web controllers consume existing services directly (RconClient, DockerManager, etc.) — not HTTP calls to API routes. The API endpoints remain for external consumers. Admin pages use Fortify session auth (already scaffolded). Live data uses Inertia v2 polling.
+
+### Tasks
+
+| # | Task | Details | Verify |
+|---|---|---|---|
+| 13.1 | Create `StatusController` | `GET /status` — public (no auth). Uses DockerManager + RconClient + ServerIniParser to return: online, player_count, players, map, max_players, uptime, mods. Inertia response. | Page renders with server data |
+| 13.2 | Create `DashboardController` | `GET /dashboard` — auth required. Returns: server status, recent audit logs (last 10), backup stats (count, last backup, total size), player count. Inertia response. | Dashboard shows real data |
+| 13.3 | Build public status page (`pages/status.tsx`) | Server status card (online/offline indicator, player count, map, uptime), player list, mod list. Inertia polling (5s interval) for live updates. No auth required, no sidebar layout. | Status page updates live |
+| 13.4 | Redesign welcome/landing page (`pages/welcome.tsx`) | Hero section with server name + status badge, features grid (RCON management, mod support, backups, whitelist), mini server status widget, CTA to join/login. Gaming-themed design. | Landing page looks polished |
+| 13.5 | Build dashboard overview (`pages/dashboard.tsx`) | Replace placeholder with: server status card (start/stop/restart buttons), player count card, backup summary card, recent audit activity table. | Dashboard shows all data |
+| 13.6 | Update sidebar navigation | Add nav items: Dashboard, Players, Config, Mods, Backups, Whitelist, Audit Log, RCON Console, Logs. Use Lucide icons. | All nav items visible |
+| 13.7 | Create TypeScript types | Types for all Inertia page props: ServerStatus, Player, AuditEntry, BackupSummary, ModEntry, etc. | Types compile without errors |
+| 13.8 | Update app branding | Sidebar logo/name → "Zomboid Manager". Update app name in config. | Branding visible in sidebar and title |
+| 13.9 | Tests | Feature tests for StatusController and DashboardController (mocked services). | Tests pass |
+
+### Acceptance Criteria
+
+- [ ] Public status page shows live server data at `/status` (no auth)
+- [ ] Landing page at `/` has hero, features, and server status widget
+- [ ] Dashboard at `/dashboard` shows real server data (auth required)
+- [ ] Inertia polling updates status page every 5 seconds
+- [ ] Sidebar has all admin nav items
+- [ ] Branding is "Zomboid Manager" throughout
+
+---
+
+## Phase 14 — Admin Management Pages
+
+**Goal:** Full admin UI for players, config, mods, backups, whitelist, and audit logs.
+
+### Tasks
+
+| # | Task | Details | Verify |
+|---|---|---|---|
+| 14.1 | Create `Admin\PlayerController` | Inertia responses for player list + actions (kick, ban, setaccess, teleport, additem, addxp, godmode). Uses RconClient. | Player page loads with data |
+| 14.2 | Build player management page | Online player table with action dropdowns (kick, ban, set access level). Action modals with confirmation. Real-time via polling. | Can kick/ban from UI |
+| 14.3 | Create `Admin\ConfigController` | Inertia responses for server.ini and sandbox config. GET to show, PATCH to update. Uses ServerIniParser + SandboxLuaParser. | Config page loads |
+| 14.4 | Build server config editor | Tabbed layout: Server Settings (server.ini) + Sandbox Settings (SandboxVars.lua). Form inputs for each setting with save button. Shows restart_required banner. | Can edit and save config |
+| 14.5 | Create `Admin\ModController` | Inertia responses for mod list. Add/remove/reorder. Uses ModManager. | Mod page loads |
+| 14.6 | Build mod manager page | Mod list with drag-to-reorder, add mod form (workshop ID + mod ID), remove button with confirmation. | Can add/remove/reorder mods |
+| 14.7 | Create `Admin\BackupController` | Inertia responses for backup list, create, delete, rollback. Uses BackupManager. | Backup page loads |
+| 14.8 | Build backup management page | Backup table (filename, size, type, date), create backup button, rollback button with confirmation modal, delete button. Schedule display. | Can create/rollback/delete backups |
+| 14.9 | Create `Admin\WhitelistController` | Inertia responses for whitelist CRUD + sync. Uses WhitelistManager. | Whitelist page loads |
+| 14.10 | Build whitelist management page | Whitelist table, add user form (username + password), remove button, sync button with status report. | Can manage whitelist |
+| 14.11 | Create `Admin\AuditController` | Inertia responses for paginated audit log with filters (action, actor, date range). | Audit page loads |
+| 14.12 | Build audit log viewer | Audit log table with pagination, filter dropdowns (action type, actor), date range picker. Expandable rows for details JSON. | Audit log browsable |
+| 14.13 | Tests | Feature tests for all admin controllers (mocked services). | Tests pass |
+
+### Acceptance Criteria
+
+- [ ] Admin can manage players from web UI (kick, ban, set access)
+- [ ] Admin can edit server.ini and sandbox settings via forms
+- [ ] Admin can add/remove/reorder mods via web UI
+- [ ] Admin can create/delete/rollback backups via web UI
+- [ ] Admin can manage whitelist entries via web UI
+- [ ] Audit log is browsable with filters and pagination
+- [ ] All admin actions through the UI are audit-logged
+- [ ] All pages are responsive (usable on mobile)
+
+---
+
+## Phase 15 — RCON Console, Live Logs & Polish
+
+**Goal:** RCON console in browser, live server logs, final polish.
+
+### Tasks
+
+| # | Task | Details | Verify |
+|---|---|---|---|
+| 15.1 | Create `Admin\RconController` | POST endpoint for executing RCON commands (Inertia or JSON). Uses RconClient. Audit-logged. | RCON command executes |
+| 15.2 | Build RCON console page | Terminal-style UI: command input, scrollable output history, command history (up arrow). Dark terminal aesthetic. | Can send commands and see responses |
+| 15.3 | Create `Admin\LogController` | GET endpoint for server container logs. Uses DockerManager::getContainerLogs(). Polling for live updates. | Logs page loads |
+| 15.4 | Build live log viewer | Log output with auto-scroll, tail count selector, auto-refresh toggle. Monospace font, syntax-highlighted timestamps. | Logs stream live |
+| 15.5 | Server control actions on dashboard | Start/stop/restart buttons on dashboard with confirmation modals. Status indicator updates via polling. | Can control server from dashboard |
+| 15.6 | Error handling & loading states | Skeleton loaders for all pages, error boundaries, toast notifications for actions (success/failure). | No blank screens during loading |
+| 15.7 | Responsive polish | Test all pages on mobile viewport. Fix any layout issues. Ensure sidebar collapses properly. | All pages usable on mobile |
+| 15.8 | Tests | Feature tests for RCON and log controllers. | Tests pass |
+
+### Acceptance Criteria
+
+- [ ] RCON console works in browser — send command, see response
+- [ ] Server logs stream in real-time with auto-scroll
+- [ ] Server can be started/stopped/restarted from dashboard
+- [ ] All pages have proper loading states and error handling
+- [ ] Toast notifications for all admin actions
+- [ ] All pages responsive on mobile
+- [ ] All new tests pass
+
+---
+
 ## Future Phases (Outlined, Not Detailed)
-
-### Phase 13–15: Web Dashboard (Stage 3)
-
-- React + Inertia pages for all dashboard views (same Laravel app, no separate SPA)
-- Public server status page (no auth, Inertia polling for live updates)
-- Admin login via Fortify session auth (already scaffolded by starter kit)
-- Admin dashboard: player management, config editor, mod manager, backup/rollback UI
-- RCON console in browser (React component with polling or SSE)
-- Live log streaming (React component with polling)
-- shadcn/ui components for all dashboard UI
-- Caddy reverse proxy with auto-TLS
-- Tailwind CSS v4, responsive design for mobile admin
 
 ### Phase 16–18: Subscriptions (Stage 4)
 
@@ -574,3 +659,6 @@ php artisan scribe:generate
 | Phase 10 — Rollback System | DONE | Rollback endpoint with pre-rollback safety backup, file validation, 10 tests |
 | Phase 11 — Whitelist + Schema | DONE | User role+steam_id, WhitelistEntry model, WhitelistManager (SQLite CRUD + sync), 5 API endpoints, 15 tests |
 | Phase 12 — Stage 2 Delivery | DONE | 203 tests passing (740 assertions), integration cycle tests. Scribe + README pending Docker env |
+| Phase 13 — Public Pages + Dashboard | IN PROGRESS | Landing page, /status page, dashboard overview with real data |
+| Phase 14 — Admin Management Pages | TODO | Player, config, mod, backup, whitelist, audit log pages |
+| Phase 15 — RCON Console + Live Logs | TODO | RCON console, log viewer, server controls, polish |
