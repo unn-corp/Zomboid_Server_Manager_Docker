@@ -211,13 +211,13 @@ Zomboid/
 
 ### Acceptance Criteria
 
-- [ ] All 7 endpoints return correct JSON responses
-- [ ] `/api/server/status` works without auth and returns accurate data
-- [ ] `/api/server/status` returns `{"online": false, ...}` when server is down (no 500 error)
-- [ ] Stop performs graceful save before shutdown
-- [ ] Restart with countdown broadcasts warning message then restarts
-- [ ] Every admin endpoint creates an audit_log entry
-- [ ] All endpoints handle "server offline" case without crashing
+- [x] All 7 endpoints return correct JSON responses
+- [x] `/api/server/status` works without auth and returns accurate data
+- [x] `/api/server/status` returns `{"online": false, ...}` when server is down (no 500 error)
+- [x] Stop performs graceful save before shutdown
+- [x] Restart with countdown broadcasts warning message then restarts
+- [x] Every admin endpoint creates an audit_log entry
+- [x] All endpoints handle "server offline" case without crashing
 
 ---
 
@@ -565,7 +565,7 @@ php artisan scribe:generate
 | Phase 1 — Docker Infrastructure | DONE | docker-compose.yml, .env.example, networking verified |
 | Phase 2 — Laravel + RCON | DONE | React/Inertia starter kit, RconClient, DockerManager, ApiKeyAuth, health endpoint |
 | Phase 3 — Database + Audit | DONE | AuditLog model+migration, AuditLogger service, AuditApiActions middleware, GET /api/audit endpoint, 13 tests |
-| Phase 4 — Server Control | NOT STARTED | |
+| Phase 4 — Server Control | DONE | 7 endpoints, RestartGameServer job, graceful stop, countdown restart, 22 tests |
 | Phase 5 — Config Management | NOT STARTED | |
 | Phase 6 — Player Management | NOT STARTED | |
 | Phase 7 — Mod Management | NOT STARTED | |
