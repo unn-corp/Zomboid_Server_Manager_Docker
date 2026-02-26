@@ -54,6 +54,7 @@ Route::middleware(['auth.apikey', 'audit'])->group(function () {
     Route::get('/backups', [BackupController::class, 'index']);
     Route::post('/backups', [BackupController::class, 'store']);
     Route::delete('/backups/{backup}', [BackupController::class, 'destroy']);
+    Route::post('/backups/{backup}/rollback', [BackupController::class, 'rollback']);
     Route::get('/backups/schedule', [BackupController::class, 'schedule']);
     Route::put('/backups/schedule', [BackupController::class, 'updateSchedule']);
 });

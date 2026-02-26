@@ -374,11 +374,11 @@ Zomboid/
 
 ### Acceptance Criteria
 
-- [ ] Rollback stops server, replaces save, restarts server
-- [ ] Pre-rollback backup always created before rollback
-- [ ] Server comes back online with the rolled-back world state
-- [ ] Rollback to non-existent or corrupted backup returns clear error
-- [ ] Entire rollback process is audit-logged
+- [x] Rollback stops server, replaces save, restarts server
+- [x] Pre-rollback backup always created before rollback
+- [x] Server comes back online with the rolled-back world state
+- [x] Rollback to non-existent or corrupted backup returns clear error
+- [x] Entire rollback process is audit-logged
 
 ---
 
@@ -571,6 +571,6 @@ php artisan scribe:generate
 | Phase 7 — Mod Management | DONE | ModManager service, add/remove/reorder endpoints, paired list sync, 11 tests |
 | Phase 8 — MVP Testing & Docs | DONE | 145 tests passing, .env.example finalized. Scribe + README + E2E pending Docker env |
 | Phase 9 — Backup System | DONE | Backup model, BackupManager service, CreateBackupJob, 5 API endpoints, scheduler, queue worker, 28 tests |
-| Phase 10 — Rollback System | NOT STARTED | |
+| Phase 10 — Rollback System | DONE | Rollback endpoint with pre-rollback safety backup, file validation, 10 tests |
 | Phase 11 — Whitelist + Schema | NOT STARTED | |
 | Phase 12 — Stage 2 Delivery | NOT STARTED | |

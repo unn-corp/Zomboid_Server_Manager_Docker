@@ -11,6 +11,7 @@ class BackupManager
 {
     public function __construct(
         private readonly RconClient $rcon,
+        private readonly DockerManager $docker,
     ) {}
 
     /**
@@ -88,6 +89,84 @@ class BackupManager
         }
 
         return $deleted;
+    }
+
+    /**
+     * Rollback to a backup: create pre-rollback safety backup, stop server, extract, start server.
+     *
+     * @return array{pre_rollback_backup: Backup, restored_from: Backup}
+     */
+    public function rollback(Backup $backup): array
+    {
+        $this->validateBackupFile($backup);
+
+        // 1. Create pre-rollback safety backup
+        $preRollback = $this->createBackup(BackupType::PreRollback, "Pre-rollback safety backup before restoring {$backup->filename}");
+
+        // 2. Stop the game server
+        $this->stopServer();
+
+        // 3. Extract backup over save directory
+        $this->extractBackup($backup);
+
+        // 4. Start the game server
+        $this->docker->startContainer();
+
+        return [
+            'pre_rollback_backup' => $preRollback['backup'],
+            'restored_from' => $backup,
+        ];
+    }
+
+    /**
+     * Validate that a backup file exists and is a valid tar.gz.
+     */
+    public function validateBackupFile(Backup $backup): void
+    {
+        if (! file_exists($backup->path)) {
+            throw new \RuntimeException("Backup file not found: {$backup->path}");
+        }
+
+        $result = Process::run(['tar', '-tzf', $backup->path]);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Backup file is corrupted or not a valid tar.gz: {$backup->filename}");
+        }
+    }
+
+    /**
+     * Extract a backup archive over the PZ data directory.
+     */
+    private function extractBackup(Backup $backup): void
+    {
+        $dataPath = config('zomboid.paths.data');
+
+        $result = Process::run([
+            'tar', '-xzf', $backup->path,
+            '-C', $dataPath,
+        ]);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException("Failed to extract backup: {$result->errorOutput()}");
+        }
+    }
+
+    /**
+     * Stop the game server gracefully via RCON then Docker.
+     */
+    private function stopServer(): void
+    {
+        try {
+            $this->rcon->connect();
+            $this->rcon->command('save');
+            sleep(3);
+            $this->rcon->command('quit');
+            sleep(2);
+        } catch (\Throwable) {
+            // Server may already be offline
+        }
+
+        $this->docker->stopContainer(timeout: 30);
     }
 
     /**

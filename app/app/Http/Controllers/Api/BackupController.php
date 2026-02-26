@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\BackupType;
 use App\Http\Requests\Api\CreateBackupRequest;
+use App\Http\Requests\Api\RollbackRequest;
 use App\Http\Requests\Api\UpdateBackupScheduleRequest;
 use App\Http\Resources\BackupResource;
 use App\Models\Backup;
@@ -73,6 +74,34 @@ class BackupController
         return response()->json([
             'message' => 'Backup deleted',
             'filename' => $filename,
+        ]);
+    }
+
+    public function rollback(Backup $backup, RollbackRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->backupManager->rollback($backup);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        $this->auditLogger->log(
+            actor: 'api-key',
+            action: 'backup.rollback',
+            target: $backup->filename,
+            details: [
+                'restored_from' => $backup->id,
+                'pre_rollback_backup' => $result['pre_rollback_backup']->filename,
+            ],
+            ip: $request->ip(),
+        );
+
+        return response()->json([
+            'message' => 'Rollback completed',
+            'restored_from' => new BackupResource($result['restored_from']),
+            'pre_rollback_backup' => new BackupResource($result['pre_rollback_backup']),
         ]);
     }
 
