@@ -60,6 +60,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Lua Bridge — File-based communication with PZ Lua mod
+    |--------------------------------------------------------------------------
+    */
+    'lua_bridge' => [
+        'path' => env('LUA_BRIDGE_PATH', '/lua-bridge'),
+        'inventory_dir' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/inventory',
+        'delivery_queue' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/delivery_queue.json',
+        'delivery_results' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/delivery_results.json',
+        'players_live' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/players_live.json',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API Authentication
     |--------------------------------------------------------------------------
     */

@@ -28,6 +28,7 @@ services:
       - zomboid-server:/home/steam/pzserver
       - ./game-server/configure-server.sh:/home/steam/configure-server.sh:ro
       - ./game-server/entrypoint.sh:/home/steam/entrypoint.sh:ro
+      - ./game-server/mods/ZomboidManager:/home/steam/Zomboid/mods/ZomboidManager:ro
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q '[p]roject-zomboid\\|[z]omboid.*java\\|[j]ava.*zomboid'"]
       interval: 30s

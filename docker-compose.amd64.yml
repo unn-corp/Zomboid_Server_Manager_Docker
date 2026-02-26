@@ -26,6 +26,7 @@ services:
       TZ: ${TZ:-Asia/Tbilisi}
     volumes:
       - zomboid-server:/home/steam/ZomboidDedicatedServer
+      - ./game-server/mods/ZomboidManager:/home/steam/Zomboid/mods/ZomboidManager:ro
     healthcheck:
       test: ["CMD-SHELL", "ss -uln | grep -q ':${PZ_GAME_PORT:-16261}'"]
       interval: 30s

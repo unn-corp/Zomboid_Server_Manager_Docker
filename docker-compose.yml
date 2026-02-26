@@ -11,6 +11,7 @@ services:
       - "${PZ_DIRECT_PORT:-16262}:${PZ_DIRECT_PORT:-16262}/udp"
     volumes:
       - zomboid-data:/home/steam/Zomboid
+      - lua-bridge:/home/steam/Zomboid/Lua
     networks:
       - zomboid-net
 
@@ -35,6 +36,7 @@ services:
       - ./app:/var/www/html
       - zomboid-data:/pz-data:ro
       - backup-data:/backups
+      - lua-bridge:/lua-bridge
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: ./app/.env
     environment:
@@ -44,6 +46,7 @@ services:
       PZ_DATA_PATH: /pz-data
       PZ_RCON_HOST: game-server
       BACKUP_PATH: /backups
+      LUA_BRIDGE_PATH: /lua-bridge
     networks:
       - zomboid-net
       - backend-net
@@ -66,6 +69,7 @@ services:
     volumes:
       - zomboid-data:/pz-data:ro
       - backup-data:/backups
+      - lua-bridge:/lua-bridge
     env_file: ./app/.env
     environment:
       DB_HOST: ${DB_HOST:-db}
@@ -73,6 +77,7 @@ services:
       PZ_DATA_PATH: /pz-data
       PZ_RCON_HOST: game-server
       BACKUP_PATH: /backups
+      LUA_BRIDGE_PATH: /lua-bridge
     networks:
       - zomboid-net
       - backend-net
@@ -147,3 +152,5 @@ volumes:
     name: pz-redis
   backup-data:
     name: pz-backups
+  lua-bridge:
+    name: pz-lua-bridge

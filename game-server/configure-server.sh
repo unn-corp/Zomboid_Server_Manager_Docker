@@ -82,6 +82,22 @@ if [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
     apply_setting "WorkshopItems"    "${PZ_WORKSHOP_IDS}"           "$INI_FILE"
 fi
 
+# Auto-register ZomboidManager mod if not already present
+CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
+if [ -n "$CURRENT_MODS" ]; then
+    if ! echo "$CURRENT_MODS" | grep -q "ZomboidManager"; then
+        apply_setting "Mods" "${CURRENT_MODS};ZomboidManager" "$INI_FILE"
+        echo "[configure-server] Added ZomboidManager to Mods list"
+    fi
+else
+    apply_setting "Mods" "ZomboidManager" "$INI_FILE"
+    echo "[configure-server] Set Mods=ZomboidManager"
+fi
+
+# Pre-create Lua bridge directories for inventory exports
+mkdir -p /home/steam/Zomboid/Lua/inventory
+echo "[configure-server] Lua bridge directories created"
+
 echo "[configure-server] Configuration applied:"
 echo "  Port: ${PZ_GAME_PORT:-16261}/udp"
 echo "  RCON: ${PZ_RCON_PORT:-27015}/tcp"
