@@ -110,6 +110,23 @@ it('renders the player management page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('admin/players')
         ->has('players', 2)
+        ->has('registeredUsers')
+    );
+});
+
+it('shows registered users even when server is offline', function () {
+    mockAdminRconOffline();
+
+    $admin = adminUser();
+
+    $response = $this->actingAs($admin)->get('/admin/players');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('admin/players')
+        ->has('players', 0)
+        ->has('registeredUsers', 1)
+        ->where('registeredUsers.0.username', $admin->username)
     );
 });
 

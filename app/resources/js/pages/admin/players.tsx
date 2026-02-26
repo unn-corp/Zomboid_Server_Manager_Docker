@@ -26,12 +26,27 @@ import type { BreadcrumbItem } from '@/types';
 
 type Player = { name: string };
 
+type RegisteredUser = {
+    id: number;
+    username: string;
+    role: string;
+    isOnline: boolean;
+    createdAt: string;
+};
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Players', href: '/admin/players' },
 ];
 
-export default function Players({ players }: { players: Player[] }) {
+const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
+    super_admin: 'default',
+    admin: 'default',
+    moderator: 'secondary',
+    player: 'outline',
+};
+
+export default function Players({ players, registeredUsers }: { players: Player[]; registeredUsers: RegisteredUser[] }) {
     const [kickTarget, setKickTarget] = useState<string | null>(null);
     const [banTarget, setBanTarget] = useState<string | null>(null);
     const [accessTarget, setAccessTarget] = useState<string | null>(null);
@@ -39,7 +54,7 @@ export default function Players({ players }: { players: Player[] }) {
     const [accessLevel, setAccessLevel] = useState('none');
     const [loading, setLoading] = useState(false);
 
-    usePoll(5000, { only: ['players'] });
+    usePoll(5000, { only: ['players', 'registeredUsers'] });
 
     function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
@@ -53,7 +68,7 @@ export default function Players({ players }: { players: Player[] }) {
         }).finally(() => {
             setLoading(false);
             onDone();
-            router.reload({ only: ['players'] });
+            router.reload({ only: ['players', 'registeredUsers'] });
         });
     }
 
@@ -65,7 +80,7 @@ export default function Players({ players }: { players: Player[] }) {
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Player Management</h1>
                         <p className="text-muted-foreground">
-                            {players.length} player{players.length !== 1 ? 's' : ''} online
+                            {players.length} online, {registeredUsers.length} registered
                         </p>
                     </div>
                     <Badge variant="outline" className="text-sm">
@@ -77,7 +92,7 @@ export default function Players({ players }: { players: Player[] }) {
                 <Card>
                     <CardHeader>
                         <CardTitle>Online Players</CardTitle>
-                        <CardDescription>Manage connected players via RCON commands</CardDescription>
+                        <CardDescription>Currently connected to the game server</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {players.length > 0 ? (
@@ -129,6 +144,42 @@ export default function Players({ players }: { players: Player[] }) {
                         ) : (
                             <p className="py-8 text-center text-muted-foreground">
                                 No players online
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Registered Users</CardTitle>
+                        <CardDescription>All users registered on the platform</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {registeredUsers.length > 0 ? (
+                            <div className="space-y-2">
+                                {registeredUsers.map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Circle
+                                                className={`size-2 ${user.isOnline ? 'fill-green-500 text-green-500' : 'fill-muted text-muted'}`}
+                                            />
+                                            <span className="font-medium">{user.username}</span>
+                                            <Badge variant={roleBadgeVariant[user.role] ?? 'outline'}>
+                                                {user.role.replace('_', ' ')}
+                                            </Badge>
+                                        </div>
+                                        <span className="text-sm text-muted-foreground">
+                                            Joined {new Date(user.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="py-8 text-center text-muted-foreground">
+                                No registered users
                             </p>
                         )}
                     </CardContent>

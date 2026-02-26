@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\RconClient;
 use Illuminate\Http\JsonResponse;
@@ -19,18 +20,33 @@ class PlayerController extends Controller
 
     public function index(): Response
     {
-        $players = [];
+        $onlinePlayers = [];
 
         try {
             $this->rcon->connect();
             $response = $this->rcon->command('players');
-            $players = $this->parsePlayers($response);
+            $onlinePlayers = $this->parsePlayers($response);
         } catch (\Throwable) {
             // Server offline
         }
 
+        $onlineNames = array_column($onlinePlayers, 'name');
+
+        $registeredUsers = User::query()
+            ->select('id', 'username', 'role', 'created_at')
+            ->orderBy('username')
+            ->get()
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'role' => $user->role->value,
+                'isOnline' => in_array($user->username, $onlineNames),
+                'createdAt' => $user->created_at->toISOString(),
+            ]);
+
         return Inertia::render('admin/players', [
-            'players' => $players,
+            'players' => $onlinePlayers,
+            'registeredUsers' => $registeredUsers,
         ]);
     }
 
