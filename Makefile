@@ -7,7 +7,7 @@ endif
 
 COMPOSE := docker compose -f docker-compose.yml -f $(ARCH_FILE)
 
-.PHONY: up down build restart logs ps stop pull migrate test exec arch init db-backup nuke
+.PHONY: up down build restart logs ps stop pull migrate test exec arch init db-check db-init db-reset db-backup db-restore nuke
 
 # ── First-run setup ──────────────────────────────────────────────────
 # Generates .env with random secrets from .env.example template
@@ -33,11 +33,40 @@ init:
 		echo "  Edit .env to customize server settings before starting"; \
 		echo ""; \
 	fi
+
+db-check:
 	@docker volume inspect pz-postgres >/dev/null 2>&1 || \
-		(echo "Creating postgres volume..." && docker volume create pz-postgres)
+		(echo ""; \
+		echo "ERROR: Missing Docker volume 'pz-postgres'."; \
+		echo "Refusing to start to avoid silently creating an empty database."; \
+		echo ""; \
+		echo "If this is your first run: make db-init"; \
+		echo "If data was lost and you have backups: make db-restore"; \
+		echo ""; \
+		exit 1)
+
+db-init:
+	@docker volume inspect pz-postgres >/dev/null 2>&1 && \
+		(echo "Volume pz-postgres already exists — keeping existing data."; exit 0) || true
+	@echo "Creating Postgres volume pz-postgres (empty database)."
+	@docker volume create pz-postgres >/dev/null
+	@echo "Volume created. Run 'make up' to start services."
+
+db-reset:
+	@echo "WARNING: This will PERMANENTLY delete Postgres data volume pz-postgres."
+	@echo "Type RESET_DB and press Enter to continue:"
+	@read confirm; \
+	if [ "$$confirm" != "RESET_DB" ]; then \
+		echo "Cancelled."; \
+		exit 1; \
+	fi
+	@$(COMPOSE) down
+	@docker volume rm pz-postgres 2>/dev/null || true
+	@docker volume create pz-postgres >/dev/null
+	@echo "Postgres volume recreated. Run 'make up' to start with an empty DB."
 
 # ── Core commands ────────────────────────────────────────────────────
-up: init
+up: init db-check
 	$(COMPOSE) up -d --build
 
 down:
@@ -45,8 +74,12 @@ down:
 
 nuke:
 	@echo "WARNING: This will destroy ALL data (database, game saves, backups)."
-	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _confirm
+	@echo "Type NUKE_ALL and press Enter to continue:"
+	@read confirm; \
+	if [ "$$confirm" != "NUKE_ALL" ]; then \
+		echo "Cancelled."; \
+		exit 1; \
+	fi
 	$(COMPOSE) down -v
 	@docker volume rm pz-postgres 2>/dev/null || true
 
