@@ -599,7 +599,61 @@ Replace flat text inputs with smart, grouped, collapsible config sections.
 - **shadcn/ui components:** Collapsible, Switch, Select, Tooltip, Input, Badge
 - **Tests:** Config renders with correct input types, save still works, grouping correct
 
-### Phase 18: Dashboard & UX Polish (Stage 4)
+### Phase 18: PZ Lua Bridge Mod + Admin Player Map + Inventory (Stage 4)
+
+Custom PZ server Lua mod that bridges game data to the Laravel app via shared Docker volume.
+
+**PZ Lua Bridge Mod (`game-server/mods/ZomboidManager/`):**
+- Server-side Lua mod installed in the game server container
+- **Inventory snapshots:** On `OnCreatePlayer` + `EveryTenMinutes`, serialize each online player's inventory to JSON via `getFileWriter()`
+  - For each item: `fullType` (e.g. `Base.Axe`), `name`, `category`, `count`, `condition`
+  - Write to `/pz-data/Lua/inventory/<username>.json`
+- **Delivery queue consumer:** On `OnCreatePlayer` + `EveryOneMinuteTick`, read `/pz-data/Lua/delivery_queue.json`
+  - Process pending give/remove actions for online players
+  - Give: `player:getInventory():AddItem(itemType)`
+  - Remove: `player:getInventory():removeItemOnServer(item)`
+  - Mark entries as delivered, write results back
+- **Player position snapshots:** On `EveryTenMinutes`, write all online player positions (x, y, z, isDead) to `/pz-data/Lua/players_live.json`
+- Fallback: offline player positions still readable from `players.db` → `networkPlayers` table
+
+**Second SQLite connection (`pz_players`):**
+- Add `pz_players` DB connection in `config/database.php` pointing to `Saves/Multiplayer/<ServerName>/players.db`
+- Read `networkPlayers` table: username, name, x, y, z, isDead
+- Used for offline player positions + alive/dead status
+
+**Admin Player Map page (`/admin/players/map`):**
+- Leaflet.js interactive map with PZ map tiles (from map.projectzomboid.com or self-hosted)
+- Player markers plotted at (x, y) coordinates from `players_live.json` (online) or `players.db` (offline)
+- Marker popups: player name, alive/dead, coordinates, online status
+- Color-coded markers: green = online, grey = offline, red = dead
+- Auto-refresh via Inertia polling
+- Click marker → link to player detail page
+
+**Admin Inventory Management (`/admin/players/{username}/inventory`):**
+- Read inventory from `/pz-data/Lua/inventory/<username>.json`
+- Display items in a grid with **item icons** (sourced from PZwiki's 4,276 item icon PNGs, mapped by `Base.Axe` → `Item_Axe.png`)
+- Item details: name, type, category, condition bar, count
+- **Give item:** Searchable item selector with icons + autocomplete → writes to `delivery_queue.json` → delivered on next player login or periodic tick
+- **Remove item:** Click item in inventory → confirm → writes remove action to `delivery_queue.json`
+- **Delivery status:** Show pending/delivered/failed status for queued actions
+- Works for offline players: actions queue up, delivered when player next logs in
+- All actions audit-logged
+
+**Item icon pipeline:**
+- Download PZ item icons (PNGs) from PZwiki or extract from game files
+- Store in `public/images/items/` or serve via CDN
+- Mapping: `Base.Axe` → `Item_Axe.png`, `Base.Pistol` → `Item_Pistol.png`
+- Fallback placeholder icon for unknown/modded items
+
+**Tests:**
+- Player map renders with correct coordinates from players.db
+- Delivery queue write/read JSON format
+- Give/remove actions create correct queue entries
+- Inventory display parses snapshot JSON
+- Audit logging for all inventory actions
+- Icon mapping resolves correct filenames
+
+### Phase 19: Dashboard & UX Polish (Stage 4)
 
 - Improved responsive layout for mobile/tablet
 - Toast notifications for all admin actions (save, restart, kick, etc.)
@@ -607,7 +661,7 @@ Replace flat text inputs with smart, grouped, collapsible config sections.
 - Quick-action cards on dashboard (restart, save, player count, mod count)
 - Error boundary pages (404, 500, maintenance)
 
-### Phase 19+: Subscriptions (Stage 5 — Monetization)
+### Phase 20+: Subscriptions (Stage 5 — Monetization)
 
 - Laravel Cashier (Stripe) for subscription management
 - Subscription lifecycle (Cashier handles most of this)
@@ -615,12 +669,12 @@ Replace flat text inputs with smart, grouped, collapsible config sections.
 - Admin subscription management page
 - Scheduled command for periodic sub status checks
 
-### Phase 20+: Item Shop (Stage 6 — Monetization)
+### Phase 21+: Item Shop (Stage 6 — Monetization)
 
 - Shop item CRUD (Eloquent models + admin React/Inertia UI)
 - Player shop page with categories (React + Inertia)
 - Stripe payment intents for one-time purchases
-- `DeliverItemJob` with retry logic (Laravel Queue with backoff)
+- `DeliverItemJob` → writes to `delivery_queue.json` (reuses Phase 18 Lua bridge)
 - Transaction history
 - Admin transaction/delivery management
 - Optional PayPal integration
@@ -638,6 +692,10 @@ Replace flat text inputs with smart, grouped, collapsible config sections.
 | **PZ SQLite DB locking** | Concurrent access from PZ server + API | WAL mode, short transactions, retry on lock; read-only when server is running where possible |
 | **Game server OOM / crash loops** | Restart policy causes infinite loop | Docker restart with max-retries; health check with cooldown; API monitors restart count |
 | **Backup disk space** | Backups fill disk | Retention policies enforced automatically; disk usage in status endpoint |
+| **PZ Lua mod compatibility** | Build updates may break Lua API | Pin to stable PZ build; test mod after each PZ update; use only documented API methods |
+| **File-based queue race conditions** | Laravel + PZ Lua reading/writing same JSON files | Atomic file writes (write to temp, rename); PZ Lua mod owns delivery_queue reads, Laravel owns writes |
+| **players.db concurrent access** | PZ server + Laravel reading same SQLite | Read-only from Laravel; WAL mode; busy_timeout; short transactions |
+| **Item icon coverage** | Modded items lack icons | Fallback placeholder icon; admin can upload custom icons for mod items |
 
 ---
 
@@ -734,6 +792,7 @@ php artisan scribe:generate
 | Phase 15 — RCON Console + Live Logs | DONE | RCON console, live log viewer, server start/stop/restart/save controls, 11 new tests |
 | Phase 16 — Player Registration + PZ Sync | TODO | Web registration → auto PZ account, password sync, player portal |
 | Phase 17 — Config Page UX Overhaul | TODO | Smart inputs (toggles, selects, numbers), grouped collapsible sections, descriptions |
-| Phase 18 — Dashboard & UX Polish | TODO | Mobile responsive, toasts, skeletons, error boundaries |
-| Phase 19+ — Subscriptions | TODO | Cashier/Stripe (deferred — monetization) |
-| Phase 20+ — Item Shop | TODO | Shop CRUD, payments (deferred — monetization) |
+| Phase 18 — Lua Bridge + Player Map + Inventory | TODO | PZ Lua mod, Leaflet map, inventory UI with icons, give/remove items via file queue |
+| Phase 19 — Dashboard & UX Polish | TODO | Mobile responsive, toasts, skeletons, error boundaries |
+| Phase 20+ — Subscriptions | TODO | Cashier/Stripe (deferred — monetization) |
+| Phase 21+ — Item Shop | TODO | Shop CRUD, payments, reuses Lua bridge delivery queue (deferred — monetization) |

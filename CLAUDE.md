@@ -96,7 +96,7 @@ Detailed plan with acceptance criteria in `IMPLEMENTATION_PLAN.md`. Status track
 **Stage 1 (MVP) — Phases 1–8:** Docker infra, Laravel + RCON, audit DB, server/config/player/mod API endpoints, Pest tests
 **Stage 2 — Phases 9–12:** Backup/rollback (Laravel Queue + Scheduler), whitelist CRUD, schema expansion
 **Stage 3 — Phases 13–15:** React/Inertia web dashboard
-**Stage 4 — Phases 16+:** User registration, config UX improvements, deployment hardening
+**Stage 4 — Phases 16–19:** User registration + PZ sync, config UX overhaul, Lua bridge + player map + inventory, UX polish
 **Final Stages:** Cashier subscriptions, item shop (monetization deferred to end)
 
 ## Package Versions
