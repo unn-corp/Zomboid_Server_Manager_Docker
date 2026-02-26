@@ -89,12 +89,7 @@ const footerNavItems: NavItem[] = [
         title: 'Server Status',
         href: '/status',
         icon: Activity,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs',
-        icon: BookOpen,
-    },
+    }
 ];
 
 const adminRoles = ['super_admin', 'admin', 'moderator'];
