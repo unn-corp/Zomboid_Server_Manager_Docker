@@ -52,6 +52,13 @@ if echo "$@" | grep -q "supervisord"; then
         echo "[entrypoint] WARNING: Migrations failed — run 'make migrate' manually."
     }
 
+    # Map tiles — generate in background if missing
+    if [ ! -d "${PZ_MAP_TILES_PATH:-/map-tiles}/html/map_data/base/layer0_files" ] && [ -d "${PZ_SERVER_PATH:-/pz-server}" ]; then
+        echo "[entrypoint] Map tiles not found — generating in background..."
+        php artisan zomboid:generate-map-tiles \
+            >> /var/www/html/storage/logs/map-tiles.log 2>&1 &
+    fi
+
     echo "[entrypoint] Ready."
 fi
 

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\WhitelistEntry;
+use App\Services\PlayerPositionReader;
+use App\Services\PlayersDbReader;
 use App\Services\RconClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +13,11 @@ use Inertia\Response;
 
 class PortalController extends Controller
 {
-    public function __construct(private RconClient $rcon) {}
+    public function __construct(
+        private RconClient $rcon,
+        private PlayerPositionReader $positionReader,
+        private PlayersDbReader $playersDb,
+    ) {}
 
     public function __invoke(Request $request): Response
     {
@@ -23,6 +29,32 @@ class PortalController extends Controller
 
         $isOnline = $this->checkPlayerOnline($user->username);
 
+        // Get player position: live first, fallback to DB
+        $playerPosition = $this->positionReader->getPlayerPosition($user->username);
+        if ($playerPosition === null) {
+            $dbPosition = $this->playersDb->getPlayerPosition($user->username);
+            if ($dbPosition !== null) {
+                $playerPosition = [
+                    'username' => $dbPosition['username'],
+                    'x' => $dbPosition['x'],
+                    'y' => $dbPosition['y'],
+                    'z' => $dbPosition['z'],
+                    'is_dead' => $dbPosition['is_dead'],
+                ];
+            }
+        }
+
+        $mapConfig = [
+            'tileUrl' => null,
+            'tileSize' => config('zomboid.map.tile_size'),
+            'minZoom' => config('zomboid.map.min_zoom'),
+            'maxZoom' => config('zomboid.map.max_zoom'),
+            'defaultZoom' => 5,
+            'center' => $playerPosition
+                ? ['x' => $playerPosition['x'], 'y' => $playerPosition['y']]
+                : ['x' => config('zomboid.map.center_x'), 'y' => config('zomboid.map.center_y')],
+        ];
+
         return Inertia::render('portal', [
             'pzAccount' => [
                 'username' => $user->username,
@@ -32,6 +64,8 @@ class PortalController extends Controller
             ],
             'hasEmail' => $user->email !== null,
             'emailVerified' => $user->email_verified_at !== null,
+            'playerPosition' => $playerPosition,
+            'mapConfig' => $mapConfig,
         ]);
     }
 

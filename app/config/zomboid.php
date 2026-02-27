@@ -33,6 +33,33 @@ return [
         'server_ini' => env('PZ_DATA_PATH', '/pz-data').'/Server/'.env('PZ_SERVER_NAME', 'ZomboidServer').'.ini',
         'sandbox_lua' => env('PZ_DATA_PATH', '/pz-data').'/Server/'.env('PZ_SERVER_NAME', 'ZomboidServer').'_SandboxVars.lua',
         'db' => env('PZ_DATA_PATH', '/pz-data').'/db/serverPZ.db',
+        'players_db' => env('PZ_DATA_PATH', '/pz-data').'/Saves/Multiplayer/'.env('PZ_SERVER_NAME', 'ZomboidServer').'/players.db',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Map Tile Configuration
+    |--------------------------------------------------------------------------
+    */
+    'game_server_path' => env('PZ_SERVER_PATH', '/pz-server'),
+
+    'map' => [
+        'tiles_path' => env('PZ_MAP_TILES_PATH', '/map-tiles'),
+        'tile_size' => 256,
+        'min_zoom' => 13,
+        'max_zoom' => 17,
+        'default_zoom' => 13,
+        'center_x' => 10500.0,
+        'center_y' => 9800.0,
+        'proxy_url' => env('PZ_MAP_PROXY_URL', 'https://map.projectzomboid.com/maps/SurvivalB417812L0/map_files/{z}/{x}_{y}.jpg'),
+        'proxy_tile_size' => 1024,
+        'proxy_dzi' => [
+            'width' => 2285184,
+            'height' => 990400,
+            'x0' => 1017856,
+            'y0' => -152032,
+            'sqr' => 128,
+        ],
     ],
 
     /*

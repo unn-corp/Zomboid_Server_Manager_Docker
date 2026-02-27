@@ -23,9 +23,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         // Players
         Route::get('players', [Admin\PlayerController::class, 'index'])->name('players');
+        Route::get('players/map', Admin\PlayerMapController::class)->name('players.map');
         Route::post('players/{name}/kick', [Admin\PlayerController::class, 'kick'])->name('players.kick');
         Route::post('players/{name}/ban', [Admin\PlayerController::class, 'ban'])->name('players.ban');
         Route::post('players/{name}/access', [Admin\PlayerController::class, 'setAccessLevel'])->name('players.access');
+
+        // Map Tiles
+        Route::get('map-tiles/{level}/{tile}', [Admin\PlayerMapController::class, 'tile'])->name('map.tile')->where('tile', '.*');
 
         // Config
         Route::get('config', [Admin\ConfigController::class, 'index'])->name('config');

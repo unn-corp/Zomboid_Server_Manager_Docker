@@ -10,7 +10,10 @@ RUN apk add --no-cache \
     sqlite-dev \
     linux-headers \
     nodejs \
-    npm
+    npm \
+    python3 \
+    py3-pip \
+    git
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -34,6 +37,12 @@ WORKDIR /var/www/html
 # Copy composer files first for layer caching
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# Install pzmap2dzi for map tile generation (pyclipper needs C++ compiler)
+RUN apk add --no-cache --virtual .pzmap-build-deps g++ python3-dev \
+    && git clone --depth 1 https://github.com/cff29546/pzmap2dzi.git /opt/pzmap2dzi \
+    && pip3 install --break-system-packages lupa pyclipper pillow pyyaml ruamel.yaml \
+    && apk del .pzmap-build-deps
 
 # Copy package files and install + build frontend
 COPY package.json package-lock.json ./

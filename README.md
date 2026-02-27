@@ -73,6 +73,14 @@ make down && make up
 | `make build` | Rebuild Docker images without starting |
 | `make arch` | Show detected CPU architecture |
 
+`make test` forces `APP_ENV=testing` and an isolated in-memory SQLite database, so tests cannot wipe the live PostgreSQL data.
+
+If you run tests manually, use:
+
+```bash
+docker exec pz-app sh -lc 'cd /var/www/html && APP_ENV=testing APP_CONFIG_CACHE=/tmp/laravel-test-config.php DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test'
+```
+
 ## Architecture
 
 Five Docker services:

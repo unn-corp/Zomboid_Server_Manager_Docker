@@ -50,3 +50,33 @@ export type StatusPageData = {
     mods: ModEntry[];
     server_name: string;
 };
+
+export type PlayerMarker = {
+    username: string;
+    name: string;
+    x: number;
+    y: number;
+    z: number;
+    status: 'online' | 'offline' | 'dead';
+    is_online: boolean;
+};
+
+export type DziInfo = {
+    width: number;
+    height: number;
+    x0: number;
+    y0: number;
+    sqr: number;
+    maxNativeZoom: number;
+    isometric: boolean;
+};
+
+export type MapConfig = {
+    tileUrl: string | null;
+    tileSize: number;
+    minZoom: number;
+    maxZoom: number;
+    defaultZoom: number;
+    center: { x: number; y: number };
+    dzi: DziInfo | null;
+};

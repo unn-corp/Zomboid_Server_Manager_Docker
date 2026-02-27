@@ -5,6 +5,7 @@ import {
     BookOpen,
     Gamepad2,
     LayoutGrid,
+    MapPin,
     Package,
     ScrollText,
     Shield,
@@ -38,6 +39,11 @@ const adminNavItems: NavItem[] = [
         title: 'Players',
         href: '/admin/players',
         icon: Users,
+    },
+    {
+        title: 'Player Map',
+        href: '/admin/players/map',
+        icon: MapPin,
     },
     {
         title: 'Config',

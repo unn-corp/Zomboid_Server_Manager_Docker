@@ -5,6 +5,8 @@ use App\Models\Backup;
 use App\Models\User;
 use App\Services\BackupManager;
 use App\Services\ModManager;
+use App\Services\PlayerPositionReader;
+use App\Services\PlayersDbReader;
 use App\Services\RconClient;
 use App\Services\SandboxLuaParser;
 use App\Services\ServerIniParser;
@@ -472,4 +474,111 @@ it('allows moderators to access admin pages', function () {
     $moderator = User::factory()->create(['role' => \App\Enums\UserRole::Moderator]);
 
     $this->actingAs($moderator)->get('/admin/players')->assertOk();
+});
+
+// --- Player Map ---
+
+function mockPlayersDbReader(array $players = []): void
+{
+    $reader = Mockery::mock(PlayersDbReader::class);
+    $reader->shouldReceive('getAllPlayerPositions')->andReturn($players)->byDefault();
+    $reader->shouldReceive('getPlayerPosition')->andReturn(null)->byDefault();
+
+    app()->instance(PlayersDbReader::class, $reader);
+}
+
+function mockPlayerPositionReader(?array $data = null): void
+{
+    $reader = Mockery::mock(PlayerPositionReader::class);
+    $reader->shouldReceive('getLivePositions')->andReturn($data)->byDefault();
+    $reader->shouldReceive('getPlayerPosition')->andReturn(null)->byDefault();
+    $reader->shouldReceive('isStale')->andReturn($data === null)->byDefault();
+
+    app()->instance(PlayerPositionReader::class, $reader);
+}
+
+it('renders the player map page with merged data', function () {
+    mockPlayersDbReader([
+        ['username' => 'Alice', 'name' => 'Alice', 'x' => 10500.0, 'y' => 9800.0, 'z' => 0, 'is_dead' => false],
+        ['username' => 'Bob', 'name' => 'Bob', 'x' => 10600.0, 'y' => 9900.0, 'z' => 0, 'is_dead' => false],
+    ]);
+    mockPlayerPositionReader([
+        'timestamp' => '2026-01-15T14:30:00',
+        'players' => [
+            ['username' => 'Alice', 'x' => 10510.0, 'y' => 9810.0, 'z' => 0, 'is_dead' => false],
+        ],
+    ]);
+
+    $response = $this->actingAs(adminUser())->get('/admin/players/map');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('admin/player-map')
+        ->has('markers', 2)
+        ->has('mapConfig')
+        ->has('hasTiles')
+        ->where('markers.0.username', 'Alice')
+        ->where('markers.0.status', 'online')
+        ->where('markers.0.x', 10510)
+        ->where('markers.1.username', 'Bob')
+        ->where('markers.1.status', 'offline')
+    );
+});
+
+it('renders player map with empty data', function () {
+    mockPlayersDbReader([]);
+    mockPlayerPositionReader(null);
+
+    $response = $this->actingAs(adminUser())->get('/admin/players/map');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('admin/player-map')
+        ->has('markers', 0)
+    );
+});
+
+it('shows dead players as dead status on the map', function () {
+    mockPlayersDbReader([
+        ['username' => 'DeadPlayer', 'name' => 'DeadPlayer', 'x' => 10500.0, 'y' => 9800.0, 'z' => 0, 'is_dead' => true],
+    ]);
+    mockPlayerPositionReader(null);
+
+    $response = $this->actingAs(adminUser())->get('/admin/players/map');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('admin/player-map')
+        ->where('markers.0.status', 'dead')
+    );
+});
+
+it('uses live position for online players', function () {
+    mockPlayersDbReader([
+        ['username' => 'Alice', 'name' => 'Alice', 'x' => 100.0, 'y' => 200.0, 'z' => 0, 'is_dead' => false],
+    ]);
+    mockPlayerPositionReader([
+        'timestamp' => '2026-01-15T14:30:00',
+        'players' => [
+            ['username' => 'Alice', 'x' => 300.0, 'y' => 400.0, 'z' => 1, 'is_dead' => false],
+        ],
+    ]);
+
+    $response = $this->actingAs(adminUser())->get('/admin/players/map');
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('markers.0.x', 300)
+        ->where('markers.0.y', 400)
+        ->where('markers.0.status', 'online')
+    );
+});
+
+it('requires auth for player map page', function () {
+    $this->get('/admin/players/map')->assertRedirect('/login');
+});
+
+it('blocks players from player map page', function () {
+    $player = User::factory()->create(['role' => \App\Enums\UserRole::Player]);
+
+    $this->actingAs($player)->get('/admin/players/map')->assertForbidden();
 });

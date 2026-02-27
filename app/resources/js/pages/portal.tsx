@@ -1,10 +1,20 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import PzMap from '@/components/pz-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import type { MapConfig, PlayerMarker } from '@/types/server';
 import { edit } from '@/routes/profile';
+
+type PlayerPosition = {
+    username: string;
+    x: number;
+    y: number;
+    z: number;
+    is_dead: boolean;
+};
 
 type PzAccount = {
     username: string;
@@ -17,6 +27,8 @@ type Props = {
     pzAccount: PzAccount;
     hasEmail: boolean;
     emailVerified: boolean;
+    playerPosition: PlayerPosition | null;
+    mapConfig: MapConfig;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,7 +38,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Portal({ pzAccount, hasEmail, emailVerified }: Props) {
+export default function Portal({ pzAccount, hasEmail, emailVerified, playerPosition, mapConfig }: Props) {
     const { auth } = usePage().props;
 
     return (
@@ -120,6 +132,39 @@ export default function Portal({ pzAccount, hasEmail, emailVerified }: Props) {
                         )}
                     </CardContent>
                 </Card>
+
+                {playerPosition && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Your Location</CardTitle>
+                            <CardDescription>
+                                Last known position on the map ({playerPosition.x.toFixed(0)}, {playerPosition.y.toFixed(0)})
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[300px] p-0">
+                            <PzMap
+                                markers={[
+                                    {
+                                        username: pzAccount.username,
+                                        name: pzAccount.username,
+                                        x: playerPosition.x,
+                                        y: playerPosition.y,
+                                        z: playerPosition.z,
+                                        status: playerPosition.is_dead ? 'dead' : pzAccount.isOnline ? 'online' : 'offline',
+                                        is_online: pzAccount.isOnline,
+                                    },
+                                ]}
+                                mapConfig={{
+                                    ...mapConfig,
+                                    center: { x: playerPosition.x, y: playerPosition.y },
+                                }}
+                                hasTiles={false}
+                                interactive={false}
+                                className="rounded-b-xl"
+                            />
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </AppLayout>
     );
