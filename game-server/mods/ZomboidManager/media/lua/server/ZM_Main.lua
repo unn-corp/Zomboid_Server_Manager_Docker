@@ -49,7 +49,11 @@ end
 --- OnServerStarted — export item catalog once on server boot
 local function onServerStarted()
     local count = ZM_ItemCatalog.export()
-    print("[ZomboidManager] Exported item catalog: " .. count .. " items")
+    if count > 0 then
+        print("[ZomboidManager] Exported item catalog: " .. count .. " items")
+    else
+        print("[ZomboidManager] WARNING: item catalog export returned 0 items")
+    end
 end
 
 -- Register event hooks

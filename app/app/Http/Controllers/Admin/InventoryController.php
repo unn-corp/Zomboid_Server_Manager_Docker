@@ -13,9 +13,12 @@ use App\Services\ItemIconResolver;
 use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class InventoryController extends Controller
 {
+    private const USERNAME_PATTERN = '/^[a-zA-Z0-9_-]+$/';
+
     public function __construct(
         private readonly InventoryReader $inventoryReader,
         private readonly DeliveryQueueManager $deliveryQueue,
@@ -29,6 +32,8 @@ class InventoryController extends Controller
      */
     public function show(string $username): Response
     {
+        $this->validateUsername($username);
+
         $inventory = $this->inventoryReader->getPlayerInventory($username);
 
         // Resolve icon paths for inventory items
@@ -68,6 +73,8 @@ class InventoryController extends Controller
      */
     public function giveItem(GiveItemRequest $request, string $username): JsonResponse
     {
+        $this->validateUsername($username);
+
         $validated = $request->validated();
 
         $entry = $this->deliveryQueue->giveItem(
@@ -96,6 +103,8 @@ class InventoryController extends Controller
      */
     public function removeItem(RemoveItemRequest $request, string $username): JsonResponse
     {
+        $this->validateUsername($username);
+
         $validated = $request->validated();
 
         $entry = $this->deliveryQueue->removeItem(
@@ -124,6 +133,8 @@ class InventoryController extends Controller
      */
     public function deliveryStatus(string $username): JsonResponse
     {
+        $this->validateUsername($username);
+
         return response()->json($this->getPlayerDeliveries($username));
     }
 
@@ -137,28 +148,39 @@ class InventoryController extends Controller
         $queue = $this->deliveryQueue->readQueue();
         $results = $this->deliveryQueue->readResults();
 
+        $entries = $queue['entries'] ?? [];
+
         $pending = array_values(array_filter(
-            $queue['entries'] ?? [],
+            $entries,
             fn (array $entry) => $entry['username'] === $username
         ));
 
+        // Build ID index for O(1) lookup when matching results to queue entries
+        $playerEntryIds = [];
+        foreach ($entries as $entry) {
+            if ($entry['username'] === $username) {
+                $playerEntryIds[$entry['id']] = true;
+            }
+        }
+
         $playerResults = array_values(array_filter(
             $results['results'] ?? [],
-            function (array $result) use ($username, $queue) {
-                // Match results to queue entries by ID to filter by username
-                foreach ($queue['entries'] ?? [] as $entry) {
-                    if ($entry['id'] === $result['id'] && $entry['username'] === $username) {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
+            fn (array $result) => isset($playerEntryIds[$result['id']])
         ));
 
         return [
             'pending' => $pending,
             'results' => $playerResults,
         ];
+    }
+
+    /**
+     * Validate username to prevent path traversal.
+     */
+    private function validateUsername(string $username): void
+    {
+        if (! preg_match(self::USERNAME_PATTERN, $username)) {
+            throw new NotFoundHttpException;
+        }
     }
 }

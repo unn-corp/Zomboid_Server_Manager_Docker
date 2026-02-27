@@ -8,6 +8,7 @@ import {
     Search,
     Swords,
     Trash2,
+    X,
     Weight,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -111,6 +112,7 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
     const [giveCount, setGiveCount] = useState(1);
     const [removeCount, setRemoveCount] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [deliveryOpen, setDeliveryOpen] = useState(true);
 
     usePoll(5000, { only: ['inventory', 'deliveries'] });
@@ -156,6 +158,7 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
 
     function postAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
+        setError(null);
         fetch(url, {
             method: 'POST',
             headers: {
@@ -164,11 +167,18 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                     document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
             },
             body: JSON.stringify(data),
-        }).finally(() => {
-            setLoading(false);
-            onDone();
-            router.reload({ only: ['inventory', 'deliveries'] });
-        });
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error(`Request failed (${res.status})`);
+                onDone();
+            })
+            .catch((err) => {
+                setError(err instanceof Error ? err.message : 'Action failed');
+            })
+            .finally(() => {
+                setLoading(false);
+                router.reload({ only: ['inventory', 'deliveries'] });
+            });
     }
 
     function handleGive() {
@@ -222,6 +232,15 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                         Give Item
                     </Button>
                 </div>
+
+                {error && (
+                    <div className="flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                        <span>{error}</span>
+                        <button onClick={() => setError(null)}>
+                            <X className="size-4" />
+                        </button>
+                    </div>
+                )}
 
                 {!inventory ? (
                     <Card>
@@ -321,7 +340,7 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                                         {filteredItems.map((item, idx) => (
                                             <div
-                                                key={`${item.full_type}-${idx}`}
+                                                key={`${item.full_type}-${item.container}-${idx}`}
                                                 className="group relative flex gap-3 rounded-lg border border-border/50 p-3"
                                             >
                                                 <ItemIcon

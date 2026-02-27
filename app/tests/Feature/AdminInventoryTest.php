@@ -382,3 +382,26 @@ it('requires authentication for remove', function () {
 
     $response->assertUnauthorized();
 });
+
+// --- Username Validation (path traversal prevention) ---
+
+it('rejects path traversal in inventory view', function () {
+    setupInventoryMocks();
+
+    $response = $this->actingAs(inventoryAdminUser())
+        ->get('/admin/players/../etc/passwd/inventory');
+
+    $response->assertNotFound();
+});
+
+it('rejects path traversal in give', function () {
+    setupInventoryMocks();
+
+    $response = $this->actingAs(inventoryAdminUser())
+        ->postJson('/admin/players/../../etc/inventory/give', [
+            'item_type' => 'Base.Axe',
+            'count' => 1,
+        ]);
+
+    $response->assertNotFound();
+});

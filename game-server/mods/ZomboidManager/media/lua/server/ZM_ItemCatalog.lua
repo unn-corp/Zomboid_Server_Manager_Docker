@@ -17,7 +17,7 @@ local function getTimestamp()
         local gt = getGameTime()
         return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
             gt:getYear(), gt:getMonth() + 1, gt:getDay(),
-            gt:getHour(), gt:getMinutes(), 0)
+            gt:getHour(), gt:getMinutes(), gt:getSeconds and gt:getSeconds() or 0)
     end
     local cal = Calendar.getInstance()
     return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
@@ -51,6 +51,7 @@ function ZM_ItemCatalog.export()
 
             -- Derive icon name: Base.Axe -> Item_Axe, Farming.HandShovel -> Item_HandShovel
             local itemName = script:getName() or ""
+            if itemName == "" then itemName = "Unknown" end
             local iconName = "Item_" .. itemName
 
             table.insert(items, {
@@ -82,8 +83,13 @@ function ZM_ItemCatalog.export()
         return 0
     end
 
-    writer:write(jsonStr)
+    local writeOk, writeErr = pcall(function() writer:write(jsonStr) end)
     writer:close()
+
+    if not writeOk then
+        print("[ZomboidManager] ERROR writing item catalog: " .. tostring(writeErr))
+        return 0
+    end
 
     return count
 end

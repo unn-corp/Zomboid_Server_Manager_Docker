@@ -78,13 +78,18 @@ class DownloadItemIcons extends Command
                     ->withOptions(['allow_redirects' => true])
                     ->get($url);
 
-                if ($response->successful() && str_starts_with($response->header('Content-Type'), 'image/')) {
-                    file_put_contents($outputPath, $response->body());
-                    $downloaded++;
+                if ($response->successful() && str_starts_with($response->header('Content-Type') ?? '', 'image/')) {
+                    if (file_put_contents($outputPath, $response->body()) === false) {
+                        $this->line("<fg=red>  Failed to write: {$filename}</>");
+                        $failed++;
+                    } else {
+                        $downloaded++;
+                    }
                 } else {
                     $failed++;
                 }
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                $this->line("<fg=red>  Error downloading {$filename}: {$e->getMessage()}</>");
                 $failed++;
             }
 
