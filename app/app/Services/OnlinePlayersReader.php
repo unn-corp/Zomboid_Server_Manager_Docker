@@ -46,11 +46,15 @@ class OnlinePlayersReader
         try {
             $this->rcon->connect();
             $response = $this->rcon->command('players');
+            $parsed = $this->parseRconPlayers($response);
 
-            return [
-                'usernames' => $this->parseRconPlayers($response) ?? [],
-                'source' => 'rcon',
-            ];
+            if ($parsed !== null) {
+                return [
+                    'usernames' => $parsed,
+                    'source' => 'rcon',
+                ];
+            }
+            // Response didn't match expected format — fall through to user log
         } catch (\Throwable) {
             // RCON unavailable
         }

@@ -100,7 +100,22 @@ class RconClient
 
         $response = $this->readPacket();
 
-        if ($response === null || $response['id'] === -1) {
+        if ($response === null) {
+            $this->close();
+
+            throw new RuntimeException('RCON authentication failed');
+        }
+
+        // Source RCON sends an empty SERVERDATA_RESPONSE_VALUE (type 0) before the
+        // SERVERDATA_AUTH_RESPONSE (type 2). Read the second packet to drain the buffer.
+        if ($response['type'] === 0) {
+            $authResponse = $this->readPacket();
+            if ($authResponse !== null && $authResponse['id'] === -1) {
+                $this->close();
+
+                throw new RuntimeException('RCON authentication failed');
+            }
+        } elseif ($response['id'] === -1) {
             $this->close();
 
             throw new RuntimeException('RCON authentication failed');
