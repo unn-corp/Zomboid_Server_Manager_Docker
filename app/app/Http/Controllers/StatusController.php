@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DockerManager;
+use App\Services\GameStateReader;
 use App\Services\ModManager;
 use App\Services\RconClient;
 use Carbon\Carbon;
@@ -15,6 +16,7 @@ class StatusController extends Controller
         private readonly RconClient $rcon,
         private readonly DockerManager $docker,
         private readonly ModManager $modManager,
+        private readonly GameStateReader $gameStateReader,
     ) {}
 
     public function __invoke(): Response
@@ -61,8 +63,11 @@ class StatusController extends Controller
             // Config file not available
         }
 
+        $gameState = $online ? $this->gameStateReader->getGameState() : null;
+
         return Inertia::render('status', [
             'server' => $server,
+            'game_state' => $gameState,
             'mods' => $mods,
             'server_name' => config('zomboid.server_name', 'ZomboidServer'),
         ]);

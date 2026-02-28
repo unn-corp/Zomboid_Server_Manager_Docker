@@ -1,5 +1,6 @@
 import { Head, Link, usePage, usePoll } from '@inertiajs/react';
 import { Circle, Clock, Globe, Map, Monitor, Package, Users } from 'lucide-react';
+import { GameStateWidget } from '@/components/game-state-widget';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -8,12 +9,13 @@ import { login, register } from '@/routes';
 
 export default function Status({
     server,
+    game_state,
     mods,
     server_name,
 }: StatusPageData) {
     const { auth } = usePage().props;
 
-    usePoll(5000, { only: ['server'] });
+    usePoll(5000, { only: ['server', 'game_state'] });
 
     return (
         <>
@@ -67,6 +69,13 @@ export default function Status({
                             </span>
                         </div>
                     </div>
+
+                    {/* Game State */}
+                    {server.online && (
+                        <div className="mb-8">
+                            <GameStateWidget gameState={game_state} />
+                        </div>
+                    )}
 
                     {/* Stats Grid */}
                     <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -99,6 +99,7 @@ export type DashboardData = {
 
 export type StatusPageData = {
     server: ServerStatus;
+    game_state: GameState | null;
     mods: ModEntry[];
     server_name: string;
 };
