@@ -17,7 +17,7 @@ local function getTimestamp()
         local gt = getGameTime()
         return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
             gt:getYear(), gt:getMonth() + 1, gt:getDay(),
-            gt:getHour(), gt:getMinutes(), gt:getSeconds and gt:getSeconds() or 0)
+            gt:getHour(), gt:getMinutes(), gt.getSeconds and gt:getSeconds() or 0)
     end
     local cal = Calendar.getInstance()
     return string.format("%04d-%02d-%02dT%02d:%02d:%02d",

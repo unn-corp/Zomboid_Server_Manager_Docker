@@ -1,5 +1,7 @@
 export type ServerStatus = {
     online: boolean;
+    status: 'offline' | 'starting' | 'online';
+    container_status?: string;
     player_count: number;
     players: string[];
     uptime: string | null;

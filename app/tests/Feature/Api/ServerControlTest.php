@@ -17,6 +17,7 @@ function mockDocker(array $statusOverrides = [], array $methodReturns = []): voi
         'exists' => true,
         'running' => true,
         'status' => 'running',
+        'health_status' => 'healthy',
         'started_at' => now()->subHours(2)->toIso8601String(),
         'finished_at' => null,
         'restart_count' => 0,

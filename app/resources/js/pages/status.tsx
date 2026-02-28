@@ -62,16 +62,32 @@ export default function Status({
                         <h1 className="mb-2 text-3xl font-bold tracking-tight">{server_name}</h1>
                         <div className="flex items-center justify-center gap-2">
                             <Circle
-                                className={`size-3 fill-current ${server.online ? 'text-green-500' : 'text-red-500'}`}
+                                className={`size-3 fill-current ${
+                                    server.status === 'online'
+                                        ? 'text-green-500'
+                                        : server.status === 'starting'
+                                          ? 'text-yellow-500'
+                                          : 'text-red-500'
+                                }`}
                             />
-                            <span className={`text-lg font-medium ${server.online ? 'text-green-500' : 'text-red-500'}`}>
-                                {server.online ? 'Online' : 'Offline'}
+                            <span className={`text-lg font-medium ${
+                                server.status === 'online'
+                                    ? 'text-green-500'
+                                    : server.status === 'starting'
+                                      ? 'text-yellow-500'
+                                      : 'text-red-500'
+                            }`}>
+                                {server.status === 'online'
+                                    ? 'Online'
+                                    : server.status === 'starting'
+                                      ? 'Starting'
+                                      : 'Offline'}
                             </span>
                         </div>
                     </div>
 
                     {/* Game State */}
-                    {server.online && (
+                    {server.status !== 'offline' && (
                         <div className="mb-8">
                             <GameStateWidget gameState={game_state} />
                         </div>
@@ -158,7 +174,11 @@ export default function Status({
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">
-                                        {server.online ? 'No players online' : 'Server is offline'}
+                                        {server.status === 'online'
+                                            ? 'No players online'
+                                            : server.status === 'starting'
+                                              ? 'Server is starting...'
+                                              : 'Server is offline'}
                                     </p>
                                 )}
                             </CardContent>

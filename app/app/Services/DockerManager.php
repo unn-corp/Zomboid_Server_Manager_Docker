@@ -18,7 +18,7 @@ class DockerManager
     }
 
     /**
-     * @return array{exists: bool, running: bool, status: string, started_at?: string|null, finished_at?: string|null, restart_count?: int}
+     * @return array{exists: bool, running: bool, status: string, health_status?: string|null, started_at?: string|null, finished_at?: string|null, restart_count?: int}
      */
     public function getContainerStatus(): array
     {
@@ -38,6 +38,7 @@ class DockerManager
             'exists' => true,
             'running' => $state['Running'] ?? false,
             'status' => $state['Status'] ?? 'unknown',
+            'health_status' => $state['Health']['Status'] ?? null,
             'started_at' => $state['StartedAt'] ?? null,
             'finished_at' => $state['FinishedAt'] ?? null,
             'restart_count' => $response['RestartCount'] ?? 0,

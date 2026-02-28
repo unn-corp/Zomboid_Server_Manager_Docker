@@ -20,19 +20,26 @@ class OnlinePlayersReader
     ) {}
 
     /**
-     * Get a list of currently online usernames.
+     * Get online players with data source information.
      *
-     * @return string[]
+     * The source indicates how reliable the data is for determining game server state:
+     * - lua_bridge/rcon: game server is fully responsive
+     * - user_log/none: game may still be starting (only Docker is alive)
+     *
+     * @return array{usernames: string[], source: 'lua_bridge'|'rcon'|'user_log'|'none'}
      */
-    public function getOnlineUsernames(): array
+    public function getOnlinePlayers(): array
     {
         // 1. Try Lua bridge (most accurate — has positions too)
         $liveData = $this->positionReader->getLivePositions();
         if ($liveData !== null && ! empty($liveData['players']) && ! $this->positionReader->isStale()) {
-            return array_map(
-                fn ($p) => $p['username'] ?? '',
-                $liveData['players'],
-            );
+            return [
+                'usernames' => array_map(
+                    fn ($p) => $p['username'] ?? '',
+                    $liveData['players'],
+                ),
+                'source' => 'lua_bridge',
+            ];
         }
 
         // 2. Try RCON
@@ -41,14 +48,32 @@ class OnlinePlayersReader
             $response = $this->rcon->command('players');
             $players = $this->parseRconPlayers($response);
             if ($players !== null) {
-                return $players;
+                return [
+                    'usernames' => $players,
+                    'source' => 'rcon',
+                ];
             }
         } catch (\Throwable) {
             // RCON unavailable
         }
 
         // 3. Fall back to user log parsing
-        return $this->parseUserLog();
+        $logPlayers = $this->parseUserLog();
+
+        return [
+            'usernames' => $logPlayers,
+            'source' => ! empty($logPlayers) ? 'user_log' : 'none',
+        ];
+    }
+
+    /**
+     * Get a list of currently online usernames.
+     *
+     * @return string[]
+     */
+    public function getOnlineUsernames(): array
+    {
+        return $this->getOnlinePlayers()['usernames'];
     }
 
     /**

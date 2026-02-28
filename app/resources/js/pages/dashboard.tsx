@@ -131,16 +131,31 @@ export default function Dashboard({
                 <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                         <Circle
-                            className={`size-4 fill-current ${server.online ? 'text-green-500' : 'text-red-500'}`}
+                            className={`size-4 fill-current ${
+                                server.status === 'online'
+                                    ? 'text-green-500'
+                                    : server.status === 'starting'
+                                      ? 'text-yellow-500'
+                                      : 'text-red-500'
+                            }`}
                         />
                         <div>
                             <span className="font-semibold">
-                                Server {server.online ? 'Online' : 'Offline'}
+                                Server {server.status === 'online'
+                                    ? 'Online'
+                                    : server.status === 'starting'
+                                      ? 'Starting'
+                                      : 'Offline'}
                             </span>
-                            {server.online && server.uptime && (
+                            {server.status !== 'offline' && server.uptime && (
                                 <span className="ml-2 text-sm text-muted-foreground">
                                     Uptime: {server.uptime}
                                 </span>
+                            )}
+                            {server.status === 'starting' && server.container_status === 'running' && (
+                                <p className="text-sm text-muted-foreground">
+                                    Container running &mdash; waiting for game server to accept connections
+                                </p>
                             )}
                         </div>
                     </div>
@@ -189,7 +204,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Game State Widget */}
-                {server.online && <GameStateWidget gameState={game_state} />}
+                {server.status !== 'offline' && <GameStateWidget gameState={game_state} />}
 
                 {/* Stats Cards */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -301,7 +316,11 @@ export default function Dashboard({
                                 </div>
                             ) : (
                                 <p className="text-sm text-muted-foreground">
-                                    {server.online ? 'No players online' : 'Server is offline'}
+                                    {server.status === 'online'
+                                        ? 'No players online'
+                                        : server.status === 'starting'
+                                          ? 'Server is starting...'
+                                          : 'Server is offline'}
                                 </p>
                             )}
                         </CardContent>

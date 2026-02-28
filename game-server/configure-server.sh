@@ -74,8 +74,9 @@ apply_setting "Password"             "${PZ_SERVER_PASSWORD:-}"      "$INI_FILE"
 apply_setting "AdminPassword"        "${PZ_ADMIN_PASSWORD:-admin}"  "$INI_FILE"
 
 # RCON — critical for Laravel API
-apply_setting "RCONPort"             "${PZ_RCON_PORT:-27015}"       "$INI_FILE"
-apply_setting "RCONPassword"         "${PZ_RCON_PASSWORD:-changeme}" "$INI_FILE"
+# PZ_RCON_PASSWORD is used by the ARM64 image; RCON_PASSWORD by the AMD64 renegademaster image.
+apply_setting "RCONPort"             "${PZ_RCON_PORT:-${RCON_PORT:-27015}}"         "$INI_FILE"
+apply_setting "RCONPassword"         "${PZ_RCON_PASSWORD:-${RCON_PASSWORD:-changeme}}" "$INI_FILE"
 
 # Mods
 if [ -n "${PZ_MOD_IDS:-}" ]; then

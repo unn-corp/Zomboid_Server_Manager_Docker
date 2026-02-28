@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\OnlinePlayersReader;
 use App\Services\PlayerPositionReader;
 use App\Services\PlayersDbReader;
+use App\Services\ServerStatusResolver;
 use Illuminate\Http\Response;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -17,10 +18,12 @@ class PlayerMapController extends Controller
         private readonly PlayersDbReader $playersDb,
         private readonly PlayerPositionReader $positionReader,
         private readonly OnlinePlayersReader $onlinePlayers,
+        private readonly ServerStatusResolver $statusResolver,
     ) {}
 
     public function __invoke(): InertiaResponse
     {
+        $resolved = $this->statusResolver->resolve();
         $dbPlayers = $this->playersDb->getAllPlayerPositions();
         $liveData = $this->positionReader->getLivePositions();
 
@@ -78,18 +81,18 @@ class PlayerMapController extends Controller
             }
         }
 
-        // Add any online players not in the DB (new connections)
+        // Add any online players not in the DB (new connections or DB unavailable)
         foreach ($onlineUsernames as $username) {
             $alreadyAdded = collect($markers)->contains('username', $username);
-            if (! $alreadyAdded && isset($livePositions[$username])) {
-                $live = $livePositions[$username];
+            if (! $alreadyAdded) {
+                $live = $livePositions[$username] ?? null;
                 $markers[] = [
                     'username' => $username,
-                    'name' => $username,
-                    'x' => (float) $live['x'],
-                    'y' => (float) $live['y'],
-                    'z' => (int) ($live['z'] ?? 0),
-                    'status' => ($live['is_dead'] ?? false) ? 'dead' : 'online',
+                    'name' => $live['name'] ?? $username,
+                    'x' => $live ? (float) $live['x'] : 0.0,
+                    'y' => $live ? (float) $live['y'] : 0.0,
+                    'z' => $live ? (int) ($live['z'] ?? 0) : 0,
+                    'status' => ($live && ($live['is_dead'] ?? false)) ? 'dead' : 'online',
                     'is_online' => true,
                 ];
             }
@@ -99,6 +102,8 @@ class PlayerMapController extends Controller
 
         return Inertia::render('admin/player-map', [
             'markers' => $markers,
+            'onlineCount' => $resolved['player_count'],
+            'serverStatus' => $resolved['game_status'],
             'mapConfig' => $mapConfig,
             'hasTiles' => $mapConfig['tileUrl'] !== null,
             'tileProgress' => null,

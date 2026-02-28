@@ -3,54 +3,33 @@
 use App\Models\AuditLog;
 use App\Models\Backup;
 use App\Models\User;
-use App\Services\DockerManager;
 use App\Services\GameStateReader;
-use App\Services\RconClient;
+use App\Services\ServerStatusResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function mockDashboardDocker(array $statusOverrides = []): void
+function mockDashboardResolver(array $overrides = []): void
 {
-    $docker = Mockery::mock(DockerManager::class);
+    $resolver = Mockery::mock(ServerStatusResolver::class);
 
-    $defaultStatus = [
-        'exists' => true,
-        'running' => true,
-        'status' => 'running',
-        'started_at' => now()->subHours(2)->toIso8601String(),
-        'finished_at' => null,
-        'restart_count' => 0,
+    $defaults = [
+        'container_status' => 'running',
+        'game_status' => 'online',
+        'online' => true,
+        'player_count' => 0,
+        'players' => [],
+        'uptime' => '2 hours',
+        'map' => 'Muldraugh, KY',
+        'max_players' => 32,
+        'data_source' => 'rcon',
     ];
 
-    $docker->shouldReceive('getContainerStatus')
-        ->andReturn(array_merge($defaultStatus, $statusOverrides))
+    $resolver->shouldReceive('resolve')
+        ->andReturn(array_merge($defaults, $overrides))
         ->byDefault();
 
-    app()->instance(DockerManager::class, $docker);
-}
-
-function mockDashboardRcon(array $commands = []): void
-{
-    $rcon = Mockery::mock(RconClient::class);
-    $rcon->shouldReceive('connect')->byDefault();
-    $rcon->shouldReceive('command')->andReturn('')->byDefault();
-
-    foreach ($commands as $command => $response) {
-        $rcon->shouldReceive('command')
-            ->with($command)
-            ->andReturn($response);
-    }
-
-    app()->instance(RconClient::class, $rcon);
-}
-
-function mockDashboardRconOffline(): void
-{
-    $rcon = Mockery::mock(RconClient::class);
-    $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
-
-    app()->instance(RconClient::class, $rcon);
+    app()->instance(ServerStatusResolver::class, $resolver);
 }
 
 it('redirects guests to login', function () {
@@ -59,8 +38,7 @@ it('redirects guests to login', function () {
 });
 
 it('renders the dashboard for authenticated users', function () {
-    mockDashboardDocker();
-    mockDashboardRcon(['players' => "Players connected (0):\n"]);
+    mockDashboardResolver();
 
     $user = User::factory()->admin()->create();
 
@@ -70,14 +48,15 @@ it('renders the dashboard for authenticated users', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('dashboard')
         ->has('server')
-        ->has('recent_audit')
-        ->has('backup_summary')
+        ->has('game_state')
     );
 });
 
 it('shows server status on the dashboard', function () {
-    mockDashboardDocker();
-    mockDashboardRcon(['players' => "Players connected (3):\n-Alice\n-Bob\n-Charlie\n"]);
+    mockDashboardResolver([
+        'player_count' => 3,
+        'players' => ['Alice', 'Bob', 'Charlie'],
+    ]);
 
     $user = User::factory()->admin()->create();
 
@@ -92,9 +71,29 @@ it('shows server status on the dashboard', function () {
     );
 });
 
-it('shows recent audit log entries', function () {
-    mockDashboardDocker(['running' => false]);
-    mockDashboardRconOffline();
+it('includes container_status in dashboard server data', function () {
+    mockDashboardResolver([
+        'container_status' => 'running',
+        'game_status' => 'starting',
+        'online' => false,
+        'data_source' => 'none',
+    ]);
+
+    $user = User::factory()->admin()->create();
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('dashboard')
+        ->where('server.container_status', 'running')
+        ->where('server.status', 'starting')
+        ->where('server.online', false)
+    );
+});
+
+it('loads dashboard with audit log data present', function () {
+    mockDashboardResolver(['online' => false, 'game_status' => 'offline', 'container_status' => 'exited']);
 
     AuditLog::create([
         'actor' => 'api-key',
@@ -110,14 +109,15 @@ it('shows recent audit log entries', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('dashboard')
-        ->has('recent_audit', 1)
-        ->where('recent_audit.0.action', 'server.restart')
+        ->where('server.online', false)
     );
+
+    // Verify audit log exists in DB (deferred prop loads async)
+    expect(AuditLog::count())->toBe(1);
 });
 
-it('shows backup summary on the dashboard', function () {
-    mockDashboardDocker(['running' => false]);
-    mockDashboardRconOffline();
+it('loads dashboard with backup data present', function () {
+    mockDashboardResolver(['online' => false, 'game_status' => 'offline', 'container_status' => 'exited']);
 
     Backup::create([
         'filename' => 'backup-2026-02-26-001.tar.gz',
@@ -134,14 +134,23 @@ it('shows backup summary on the dashboard', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('dashboard')
-        ->where('backup_summary.total_count', 1)
-        ->where('backup_summary.total_size_human', '1 MB')
+        ->where('server.online', false)
     );
+
+    // Verify backup exists in DB (deferred prop loads async)
+    expect(Backup::count())->toBe(1);
 });
 
 it('handles offline server gracefully on dashboard', function () {
-    mockDashboardDocker(['running' => false, 'status' => 'exited']);
-    mockDashboardRconOffline();
+    mockDashboardResolver([
+        'container_status' => 'exited',
+        'game_status' => 'offline',
+        'online' => false,
+        'uptime' => null,
+        'map' => null,
+        'max_players' => null,
+        'data_source' => 'none',
+    ]);
 
     $user = User::factory()->admin()->create();
 
@@ -151,13 +160,34 @@ it('handles offline server gracefully on dashboard', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('dashboard')
         ->where('server.online', false)
+        ->where('server.status', 'offline')
         ->where('game_state', null)
     );
 });
 
+it('shows server as starting when health check is not yet healthy', function () {
+    mockDashboardResolver([
+        'container_status' => 'running',
+        'game_status' => 'starting',
+        'online' => false,
+        'data_source' => 'none',
+    ]);
+
+    $user = User::factory()->admin()->create();
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('dashboard')
+        ->where('server.online', false)
+        ->where('server.status', 'starting')
+        ->has('server.uptime')
+    );
+});
+
 it('includes game state when server is online and data exists', function () {
-    mockDashboardDocker();
-    mockDashboardRcon(['players' => "Players connected (0):\n"]);
+    mockDashboardResolver();
 
     $gameState = [
         'time' => [
@@ -205,8 +235,7 @@ it('includes game state when server is online and data exists', function () {
 });
 
 it('returns null game state when server is online but file missing', function () {
-    mockDashboardDocker();
-    mockDashboardRcon(['players' => "Players connected (0):\n"]);
+    mockDashboardResolver();
 
     $reader = Mockery::mock(GameStateReader::class);
     $reader->shouldReceive('getGameState')->andReturn(null);

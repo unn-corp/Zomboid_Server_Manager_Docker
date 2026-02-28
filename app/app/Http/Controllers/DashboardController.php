@@ -5,52 +5,34 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Backup;
 use App\Models\GameEvent;
-use App\Services\DockerManager;
 use App\Services\GameStateReader;
-use App\Services\OnlinePlayersReader;
 use App\Services\PlayerStatsService;
-use Carbon\Carbon;
+use App\Services\ServerStatusResolver;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
     public function __construct(
-        private readonly DockerManager $docker,
+        private readonly ServerStatusResolver $statusResolver,
         private readonly GameStateReader $gameStateReader,
         private readonly PlayerStatsService $playerStatsService,
-        private readonly OnlinePlayersReader $onlinePlayers,
     ) {}
 
     public function __invoke(): Response
     {
-        try {
-            $containerStatus = $this->docker->getContainerStatus();
-        } catch (\Throwable) {
-            $containerStatus = ['running' => false];
-        }
-        $online = $containerStatus['running'] ?? false;
+        $resolved = $this->statusResolver->resolve();
 
         $server = [
-            'online' => $online,
-            'player_count' => 0,
-            'players' => [],
-            'uptime' => null,
-            'map' => null,
-            'max_players' => null,
+            'online' => $resolved['online'],
+            'status' => $resolved['game_status'],
+            'container_status' => $resolved['container_status'],
+            'player_count' => $resolved['player_count'],
+            'players' => $resolved['players'],
+            'uptime' => $resolved['uptime'],
+            'map' => $resolved['map'],
+            'max_players' => $resolved['max_players'],
         ];
-
-        if ($online) {
-            $server['uptime'] = $this->calculateUptime($containerStatus['started_at'] ?? null);
-
-            $onlineNames = $this->onlinePlayers->getOnlineUsernames();
-            $server['players'] = $onlineNames;
-            $server['player_count'] = count($onlineNames);
-
-            $iniData = $this->readServerIni();
-            $server['map'] = $iniData['Map'] ?? null;
-            $server['max_players'] = isset($iniData['MaxPlayers']) ? (int) $iniData['MaxPlayers'] : null;
-        }
 
         $recentAudit = AuditLog::query()
             ->orderByDesc('created_at')
@@ -88,7 +70,7 @@ class DashboardController extends Controller
             'total_size_human' => $this->formatBytes($totalSizeBytes),
         ];
 
-        $gameState = $online ? $this->gameStateReader->getGameState() : null;
+        $gameState = $resolved['online'] ? $this->gameStateReader->getGameState() : null;
 
         return Inertia::render('dashboard', [
             'server' => $server,
@@ -114,49 +96,6 @@ class DashboardController extends Controller
                 ])
                 ->all()),
         ]);
-    }
-
-    private function calculateUptime(?string $startedAt): ?string
-    {
-        if ($startedAt === null) {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($startedAt)->diffForHumans(syntax: true);
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function readServerIni(): array
-    {
-        $path = config('zomboid.paths.server_ini');
-
-        if (! is_file($path)) {
-            return [];
-        }
-
-        $data = [];
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-        if ($lines === false) {
-            return [];
-        }
-
-        foreach ($lines as $line) {
-            if (str_starts_with($line, '#') || ! str_contains($line, '=')) {
-                continue;
-            }
-
-            [$key, $value] = explode('=', $line, 2);
-            $data[trim($key)] = trim($value);
-        }
-
-        return $data;
     }
 
     private function formatBytes(int $bytes): string

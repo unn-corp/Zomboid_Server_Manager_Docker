@@ -1,5 +1,5 @@
 import { Head, router, usePoll } from '@inertiajs/react';
-import { Ban, Circle, Loader2, ShieldCheck, UserX } from 'lucide-react';
+import { AlertTriangle, Ban, Circle, Loader2, ShieldCheck, UserX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import PzMap from '@/components/pz-map';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,8 @@ type TileProgress = {
 
 type Props = {
     markers: PlayerMarker[];
+    onlineCount: number;
+    serverStatus: 'offline' | 'starting' | 'online';
     mapConfig: MapConfig;
     hasTiles: boolean;
     tileProgress: TileProgress | null;
@@ -53,8 +55,8 @@ const statusDotColor: Record<PlayerMarker['status'], string> = {
     dead: 'fill-red-500 text-red-500',
 };
 
-export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }: Props) {
-    usePoll(5000, { only: ['markers', 'hasTiles', 'tileProgress'] });
+export default function PlayerMap({ markers, onlineCount, serverStatus, mapConfig, hasTiles, tileProgress }: Props) {
+    usePoll(5000, { only: ['markers', 'onlineCount', 'serverStatus', 'hasTiles', 'tileProgress'] });
 
     const [kickTarget, setKickTarget] = useState<string | null>(null);
     const [banTarget, setBanTarget] = useState<string | null>(null);
@@ -64,11 +66,11 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
     const [loading, setLoading] = useState(false);
 
     const counts = useMemo(() => {
-        const online = markers.filter((m) => m.status === 'online').length;
+        const online = Math.max(onlineCount, markers.filter((m) => m.status === 'online').length);
         const offline = markers.filter((m) => m.status === 'offline').length;
         const dead = markers.filter((m) => m.status === 'dead').length;
         return { online, offline, dead, total: markers.length };
-    }, [markers]);
+    }, [markers, onlineCount]);
 
     async function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
         setLoading(true);
@@ -126,6 +128,19 @@ export default function PlayerMap({ markers, mapConfig, hasTiles, tileProgress }
                         )}
                     </div>
                 </div>
+
+                {serverStatus === 'offline' && (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                        <AlertTriangle className="size-4 shrink-0" />
+                        Server is offline. Player positions show last known locations.
+                    </div>
+                )}
+                {serverStatus === 'starting' && (
+                    <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">
+                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                        Server is starting. Live positions will appear once the game server is ready.
+                    </div>
+                )}
 
                 <Card className="isolate flex-1">
                     <CardContent className="relative h-[350px] p-0 sm:h-[500px] lg:h-[600px]">

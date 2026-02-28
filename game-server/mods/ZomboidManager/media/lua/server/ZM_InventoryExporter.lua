@@ -38,7 +38,7 @@ local function serializeItem(item, containerName)
     }
 
     -- Condition (for drainables like water bottles, or weapons/clothing)
-    if item:getCondition and item:getMaxCondition then
+    if item.getCondition and item.getMaxCondition then
         local maxCond = item:getMaxCondition()
         if maxCond > 0 then
             data.condition = math.floor((item:getCondition() / maxCond) * 100) / 100

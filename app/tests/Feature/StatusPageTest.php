@@ -1,57 +1,32 @@
 <?php
 
-use App\Services\DockerManager;
 use App\Services\ModManager;
-use App\Services\RconClient;
+use App\Services\ServerStatusResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function mockDockerForWeb(array $statusOverrides = []): void
+function mockStatusResolver(array $overrides = []): void
 {
-    $docker = Mockery::mock(DockerManager::class);
+    $resolver = Mockery::mock(ServerStatusResolver::class);
 
-    $defaultStatus = [
-        'exists' => true,
-        'running' => true,
-        'status' => 'running',
-        'started_at' => now()->subHours(2)->toIso8601String(),
-        'finished_at' => null,
-        'restart_count' => 0,
+    $defaults = [
+        'container_status' => 'running',
+        'game_status' => 'online',
+        'online' => true,
+        'player_count' => 0,
+        'players' => [],
+        'uptime' => '2 hours',
+        'map' => 'Muldraugh, KY',
+        'max_players' => 32,
+        'data_source' => 'rcon',
     ];
 
-    $docker->shouldReceive('getContainerStatus')
-        ->andReturn(array_merge($defaultStatus, $statusOverrides))
+    $resolver->shouldReceive('resolve')
+        ->andReturn(array_merge($defaults, $overrides))
         ->byDefault();
 
-    $docker->shouldReceive('getContainerLogs')
-        ->andReturn([])
-        ->byDefault();
-
-    app()->instance(DockerManager::class, $docker);
-}
-
-function mockRconForWeb(array $commands = []): void
-{
-    $rcon = Mockery::mock(RconClient::class);
-    $rcon->shouldReceive('connect')->byDefault();
-    $rcon->shouldReceive('command')->andReturn('')->byDefault();
-
-    foreach ($commands as $command => $response) {
-        $rcon->shouldReceive('command')
-            ->with($command)
-            ->andReturn($response);
-    }
-
-    app()->instance(RconClient::class, $rcon);
-}
-
-function mockRconOfflineForWeb(): void
-{
-    $rcon = Mockery::mock(RconClient::class);
-    $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
-
-    app()->instance(RconClient::class, $rcon);
+    app()->instance(ServerStatusResolver::class, $resolver);
 }
 
 function mockModManager(array $mods = []): void
@@ -63,8 +38,7 @@ function mockModManager(array $mods = []): void
 }
 
 it('renders the status page without auth', function () {
-    mockDockerForWeb();
-    mockRconForWeb(['players' => "Players connected (0):\n"]);
+    mockStatusResolver();
     mockModManager();
 
     $response = $this->get('/status');
@@ -79,8 +53,10 @@ it('renders the status page without auth', function () {
 });
 
 it('shows server as online with player data', function () {
-    mockDockerForWeb();
-    mockRconForWeb(['players' => "Players connected (2):\n-PlayerOne\n-PlayerTwo\n"]);
+    mockStatusResolver([
+        'player_count' => 2,
+        'players' => ['PlayerOne', 'PlayerTwo'],
+    ]);
     mockModManager([
         ['workshop_id' => '123', 'mod_id' => 'TestMod', 'position' => 0],
     ]);
@@ -98,8 +74,15 @@ it('shows server as online with player data', function () {
 });
 
 it('shows server as offline when container is not running', function () {
-    mockDockerForWeb(['running' => false, 'status' => 'exited']);
-    mockRconOfflineForWeb();
+    mockStatusResolver([
+        'container_status' => 'exited',
+        'game_status' => 'offline',
+        'online' => false,
+        'uptime' => null,
+        'map' => null,
+        'max_players' => null,
+        'data_source' => 'none',
+    ]);
     mockModManager();
 
     $response = $this->get('/status');
@@ -108,14 +91,39 @@ it('shows server as offline when container is not running', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('status')
         ->where('server.online', false)
+        ->where('server.status', 'offline')
         ->where('server.player_count', 0)
         ->where('server.players', [])
     );
 });
 
-it('handles RCON unavailable gracefully on status page', function () {
-    mockDockerForWeb();
-    mockRconOfflineForWeb();
+it('shows server as starting when container running but game not ready', function () {
+    mockStatusResolver([
+        'container_status' => 'running',
+        'game_status' => 'starting',
+        'online' => false,
+        'data_source' => 'none',
+    ]);
+    mockModManager();
+
+    $response = $this->get('/status');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('status')
+        ->where('server.online', false)
+        ->where('server.status', 'starting')
+        ->has('server.uptime')
+    );
+});
+
+it('shows server as online when RCON responds even without healthy health check', function () {
+    mockStatusResolver([
+        'container_status' => 'running',
+        'game_status' => 'online',
+        'online' => true,
+        'data_source' => 'rcon',
+    ]);
     mockModManager();
 
     $response = $this->get('/status');
@@ -124,6 +132,6 @@ it('handles RCON unavailable gracefully on status page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('status')
         ->where('server.online', true)
-        ->where('server.player_count', 0)
+        ->where('server.status', 'online')
     );
 });
