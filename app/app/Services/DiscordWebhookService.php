@@ -22,7 +22,8 @@ class DiscordWebhookService
         'server.restart' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarting'],
         'server.restart.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Restart Scheduled'],
         'server.restart.executed' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarting'],
-        'server.restart.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Started'],
+        'server.start.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Ready'],
+        'server.restart.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Ready'],
         'server.save' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4BE}", 'title' => 'World Saved'],
 
         // Backup

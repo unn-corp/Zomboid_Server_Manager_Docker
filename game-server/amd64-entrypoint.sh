@@ -1,25 +1,39 @@
 #!/bin/bash
 # Wrapper entrypoint for the AMD64 game server image (renegademaster).
-# Copies ZomboidManager Lua bridge files into PZ's server script directory
-# so they're loaded automatically during startup, bypassing the mod system
-# which has discovery issues on PZ Build 42 dedicated servers.
+# Patches run_server.sh to inject ZomboidManager files and run configure-server.sh
+# AFTER SteamCMD validate but BEFORE start_server.
+#
+# ZomboidManager is a server-only bridge mod. Its Lua files are injected directly
+# into the base game's media/lua/server/ directory (not loaded as a PZ mod) to
+# avoid client checksum errors. The source files are mounted read-only at
+# /home/steam/Zomboid/mods/ZomboidManager/.
 
-SRC="/home/steam/Zomboid/mods/ZomboidManager/media/lua/server"
-DST="/home/steam/ZomboidDedicatedServer/media/lua/server"
+CONFIGURE_SCRIPT="/home/steam/configure-server.sh"
+ZM_SOURCE="/home/steam/Zomboid/mods/ZomboidManager/media/lua/server"
+ZM_TARGET="/home/steam/ZomboidDedicatedServer/media/lua/server"
 
-copy_bridge_files() {
-    if [ -d "$SRC" ] && [ -d "$DST" ]; then
-        cp "$SRC"/ZM_*.lua "$DST/" 2>/dev/null && \
-            echo "[entrypoint] Copied ZomboidManager bridge files to PZ server scripts"
-    fi
-}
+# Create a small injection script that runs after SteamCMD but before start_server
+cat > /home/steam/inject-zm.sh << 'EOSCRIPT'
+#!/bin/bash
+ZM_SOURCE="/home/steam/Zomboid/mods/ZomboidManager/media/lua/server"
+ZM_TARGET="/home/steam/ZomboidDedicatedServer/media/lua/server"
+if [ -d "$ZM_SOURCE" ] && [ -d "$ZM_TARGET" ]; then
+    cp "$ZM_SOURCE"/ZM_*.lua "$ZM_TARGET/"
+    echo "[inject-zm] Injected ZomboidManager Lua files into base game server dir"
+else
+    echo "[inject-zm] WARNING: source ($ZM_SOURCE) or target ($ZM_TARGET) not found"
+fi
+EOSCRIPT
+chmod +x /home/steam/inject-zm.sh
 
-# Patch run_server.sh to copy bridge files after SteamCMD updates the game,
-# ensuring our files are present even after validation overwrites them.
-sed -i '/^update_server$/a copy_bridge_files' /home/steam/run_server.sh
+# Patch run_server.sh to run injection + configure AFTER SteamCMD but BEFORE start_server
+# Order: SteamCMD validate -> inject ZM files -> configure-server.sh -> start_server
+sed -i '/^start_server$/i bash /home/steam/inject-zm.sh' /home/steam/run_server.sh
+echo "[entrypoint] Patched run_server.sh to inject ZM files before start"
 
-# Export function and vars so they're available in the patched script
-export -f copy_bridge_files
-export SRC DST
+if [ -f "$CONFIGURE_SCRIPT" ]; then
+    sed -i '/^start_server$/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh
+    echo "[entrypoint] Patched run_server.sh to run configure-server.sh before start"
+fi
 
 exec /home/steam/run_server.sh

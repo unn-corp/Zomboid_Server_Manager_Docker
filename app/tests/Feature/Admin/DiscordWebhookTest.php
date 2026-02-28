@@ -338,7 +338,28 @@ describe('Discord embed building', function () {
         Http::assertSent(function ($request) {
             $embed = $request->data()['embeds'][0] ?? [];
 
-            return str_contains($embed['title'] ?? '', 'Server Started')
+            return str_contains($embed['title'] ?? '', 'Server Ready')
+                && $embed['color'] === 0x2ECC71;
+        });
+    });
+
+    it('builds correct embed for start completed', function () {
+        Http::fake(['*' => Http::response(null, 204)]);
+
+        $auditLog = AuditLog::factory()->create([
+            'action' => 'server.start.completed',
+            'actor' => 'admin',
+        ]);
+
+        app(DiscordWebhookService::class)->sendNotification(
+            'https://discord.com/api/webhooks/123/token',
+            $auditLog,
+        );
+
+        Http::assertSent(function ($request) {
+            $embed = $request->data()['embeds'][0] ?? [];
+
+            return str_contains($embed['title'] ?? '', 'Server Ready')
                 && $embed['color'] === 0x2ECC71;
         });
     });

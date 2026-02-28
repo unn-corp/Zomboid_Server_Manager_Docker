@@ -255,6 +255,20 @@ class SandboxLuaParser
             return (string) $value;
         }
 
+        // Handle boolean strings from form input
+        if ($value === 'true' || $value === 'false') {
+            return $value;
+        }
+
+        // Handle numeric strings from form input — write as unquoted numbers
+        if (is_numeric($value)) {
+            if (str_contains($value, '.')) {
+                return rtrim(rtrim(number_format((float) $value, 10, '.', ''), '0'), '.');
+            }
+
+            return $value;
+        }
+
         return "\"{$value}\"";
     }
 }

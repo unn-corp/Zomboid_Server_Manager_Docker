@@ -184,9 +184,11 @@ export default function Status({
                                                 className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2"
                                             >
                                                 <span className="text-sm font-medium">{mod.mod_id}</span>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {mod.workshop_id}
-                                                </Badge>
+                                                {mod.workshop_id && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {mod.workshop_id}
+                                                    </Badge>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

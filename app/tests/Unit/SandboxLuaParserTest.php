@@ -105,3 +105,31 @@ it('updates float values correctly', function () {
 
     expect($data['ZombieConfig']['PopulationMultiplier'])->toBe(2.5);
 });
+
+it('writes numeric strings as unquoted numbers', function () {
+    $this->parser->write($this->tempPath, [
+        'Zombies' => '1',
+        'Farming' => '2',
+        'ZombieConfig.PopulationMultiplier' => '1.5',
+    ]);
+
+    $data = $this->parser->read($this->tempPath);
+
+    expect($data['Zombies'])->toBe(1)->toBeInt()
+        ->and($data['Farming'])->toBe(2)->toBeInt()
+        ->and($data['ZombieConfig']['PopulationMultiplier'])->toBe(1.5)->toBeFloat();
+
+    // Verify raw file has no quotes around numbers
+    $raw = file_get_contents($this->tempPath);
+    expect($raw)->toContain('Zombies = 1,')
+        ->and($raw)->toContain('Farming = 2,')
+        ->and($raw)->not->toContain('Farming = "2"');
+});
+
+it('writes boolean strings as unquoted booleans', function () {
+    // Use reflection to test formatValue directly
+    $method = new ReflectionMethod(SandboxLuaParser::class, 'formatValue');
+
+    expect($method->invoke($this->parser, 'true'))->toBe('true')
+        ->and($method->invoke($this->parser, 'false'))->toBe('false');
+});
