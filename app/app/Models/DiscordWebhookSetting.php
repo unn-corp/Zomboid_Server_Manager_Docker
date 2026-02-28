@@ -59,9 +59,10 @@ class DiscordWebhookSetting extends Model
             'server.stop' => ['label' => 'Server Stopped', 'default' => true, 'group' => 'Server'],
             'server.stop.scheduled' => ['label' => 'Server Stop Scheduled', 'default' => true, 'group' => 'Server'],
             'server.stop.executed' => ['label' => 'Server Stop Executed', 'default' => true, 'group' => 'Server'],
-            'server.restart' => ['label' => 'Server Restarted', 'default' => true, 'group' => 'Server'],
+            'server.restart' => ['label' => 'Server Restarting', 'default' => true, 'group' => 'Server'],
             'server.restart.scheduled' => ['label' => 'Server Restart Scheduled', 'default' => true, 'group' => 'Server'],
-            'server.restart.executed' => ['label' => 'Server Restart Executed', 'default' => true, 'group' => 'Server'],
+            'server.restart.executed' => ['label' => 'Server Restarting (Scheduled)', 'default' => true, 'group' => 'Server'],
+            'server.restart.completed' => ['label' => 'Server Started (After Restart)', 'default' => true, 'group' => 'Server'],
             'server.save' => ['label' => 'World Saved', 'default' => false, 'group' => 'Server'],
 
             // Backup

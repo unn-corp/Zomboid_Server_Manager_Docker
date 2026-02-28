@@ -39,6 +39,7 @@ it('performs immediate restart when no countdown is provided', function () {
         ->assertJson(['message' => 'Server restarting']);
 
     expect(AuditLog::where('action', 'server.restart')->exists())->toBeTrue();
+    expect(AuditLog::where('action', 'server.restart.completed')->exists())->toBeTrue();
 });
 
 // ── Scheduled restart ────────────────────────────────────────────────

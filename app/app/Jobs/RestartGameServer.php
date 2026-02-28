@@ -32,11 +32,19 @@ class RestartGameServer implements ShouldQueue
             ]);
         }
 
+        AuditLogger::record(
+            actor: 'system',
+            action: 'server.restart.executed',
+            target: config('zomboid.docker.container_name'),
+            details: ['source' => 'scheduled_job'],
+            ip: $this->ip,
+        );
+
         $docker->restartContainer(timeout: 30);
 
         AuditLogger::record(
             actor: 'system',
-            action: 'server.restart.executed',
+            action: 'server.restart.completed',
             target: config('zomboid.docker.container_name'),
             details: ['source' => 'scheduled_job'],
             ip: $this->ip,

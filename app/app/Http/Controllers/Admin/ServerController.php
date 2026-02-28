@@ -141,6 +141,12 @@ class ServerController extends Controller
             // RCON unavailable — proceed with restart
         }
 
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'server.restart',
+            ip: $request->ip(),
+        );
+
         try {
             $this->docker->restartContainer(timeout: 30);
         } catch (\Throwable $e) {
@@ -149,7 +155,7 @@ class ServerController extends Controller
 
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',
-            action: 'server.restart',
+            action: 'server.restart.completed',
             ip: $request->ip(),
         );
 

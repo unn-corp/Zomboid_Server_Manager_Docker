@@ -19,9 +19,10 @@ class DiscordWebhookService
         'server.stop' => ['color' => 0xE74C3C, 'emoji' => "\u{1F6D1}", 'title' => 'Server Stopped'],
         'server.stop.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Stop Scheduled'],
         'server.stop.executed' => ['color' => 0xE74C3C, 'emoji' => "\u{1F6D1}", 'title' => 'Server Stop Executed'],
-        'server.restart' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarted'],
+        'server.restart' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarting'],
         'server.restart.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Restart Scheduled'],
-        'server.restart.executed' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restart Executed'],
+        'server.restart.executed' => ['color' => 0x3498DB, 'emoji' => "\u{1F504}", 'title' => 'Server Restarting'],
+        'server.restart.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Started'],
         'server.save' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4BE}", 'title' => 'World Saved'],
 
         // Backup
