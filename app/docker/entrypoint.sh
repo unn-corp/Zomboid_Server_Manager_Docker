@@ -40,6 +40,14 @@ for dir in "$PZ_DATA/Saves" "$PZ_DATA/db"; do
     fi
 done
 
+# ── Lua bridge permissions ────────────────────────────────────────────
+# Shared volume between game server and app — www-data needs write access
+LUA_BRIDGE_DIR="${LUA_BRIDGE_PATH:-/lua-bridge}"
+if [ -d "$LUA_BRIDGE_DIR" ]; then
+    chown -R www-data:www-data "$LUA_BRIDGE_DIR" 2>/dev/null || true
+    chmod -R 775 "$LUA_BRIDGE_DIR" 2>/dev/null || true
+fi
+
 # ── Backup directory permissions ─────────────────────────────────────
 BACKUP_DIR="${BACKUP_PATH:-/backups}"
 if [ -d "$BACKUP_DIR" ]; then

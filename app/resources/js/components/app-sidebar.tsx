@@ -10,6 +10,7 @@ import {
     Package,
     ScrollText,
     Shield,
+    ShieldAlert,
     Terminal,
     Users,
     Wrench,
@@ -80,6 +81,11 @@ const adminNavItems: NavItem[] = [
         title: 'RCON Console',
         href: '/admin/rcon',
         icon: Terminal,
+    },
+    {
+        title: 'Safe Zones',
+        href: '/admin/safe-zones',
+        icon: ShieldAlert,
     },
     {
         title: 'Server Logs',

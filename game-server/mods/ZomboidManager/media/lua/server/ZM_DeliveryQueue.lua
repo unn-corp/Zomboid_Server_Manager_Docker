@@ -7,9 +7,8 @@ local JSON = require("ZM_JSON")
 
 ZM_DeliveryQueue = {}
 
-local LUA_DIR = "Lua"
-local QUEUE_FILE = LUA_DIR .. "/delivery_queue.json"
-local RESULTS_FILE = LUA_DIR .. "/delivery_results.json"
+local QUEUE_FILE = "delivery_queue.json"
+local RESULTS_FILE = "delivery_results.json"
 
 --- Read the delivery queue file
 local function readQueue()

@@ -10,20 +10,18 @@ require("ZM_ItemCatalog")
 require("ZM_GameState")
 require("ZM_PlayerStats")
 require("ZM_RespawnDelay")
+require("ZM_SafeZone")
 
 print("[ZomboidManager] Initializing server-side bridge mod...")
 
 --- OnCreatePlayer — triggered when a player connects/spawns
+--- NOTE: On PZ dedicated servers, this event may not fire reliably.
+--- Death detection and respawn blocking are handled via EveryOneMinute tick instead.
 local function onCreatePlayer(playerIndex, player)
     if not player then
         return
     end
     print("[ZomboidManager] Player connected: " .. (player:getUsername() or "unknown"))
-
-    -- Check respawn cooldown first — if kicked, skip everything else
-    if ZM_RespawnDelay.checkRespawnCooldown(player) then
-        return
-    end
 
     -- Export this player's inventory
     ZM_InventoryExporter.exportPlayer(player)
@@ -64,12 +62,18 @@ local function onEveryOneMinute()
 
     -- Respawn delay: reload config, process resets, clean expired
     ZM_RespawnDelay.tick()
+
+    -- Safe zone: reload config, flush violations
+    ZM_SafeZone.tick()
 end
 
 --- OnServerStarted — export game state and item catalog on server boot
 local function onServerStarted()
     -- Initialize respawn delay system
     ZM_RespawnDelay.init()
+
+    -- Initialize safe zone system
+    ZM_SafeZone.init()
 
     -- Export game state immediately so it's available even when server is paused
     if ZM_GameState.export() then
@@ -86,9 +90,9 @@ end
 
 -- Register event hooks
 Events.OnCreatePlayer.Add(onCreatePlayer)
-Events.OnPlayerDeath.Add(ZM_RespawnDelay.onPlayerDeath)
+Events.OnWeaponHitCharacter.Add(ZM_SafeZone.onWeaponHitCharacter)
 Events.EveryTenMinutes.Add(onEveryTenMinutes)
 Events.EveryOneMinute.Add(onEveryOneMinute)
 Events.OnServerStarted.Add(onServerStarted)
 
-print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnPlayerDeath, EveryTenMinutes, EveryOneMinute, OnServerStarted, GameState")
+print("[ZomboidManager] Event hooks registered: OnCreatePlayer, OnWeaponHitCharacter, EveryTenMinutes, EveryOneMinute, OnServerStarted")

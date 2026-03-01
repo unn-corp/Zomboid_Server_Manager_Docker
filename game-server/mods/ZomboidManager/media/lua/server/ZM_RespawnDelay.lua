@@ -2,19 +2,23 @@
 -- ZM_RespawnDelay.lua — Configurable respawn cooldown enforced server-side.
 -- Uses file-based IPC: reads config from Laravel, writes death records, processes resets.
 --
+-- Detection uses EveryOneMinute tick (OnPlayerDeath/OnCreatePlayer are client-side
+-- events that do not fire on a PZ dedicated server).
+--
 
 local JSON = require("ZM_JSON")
 
 ZM_RespawnDelay = {}
 
-local LUA_DIR = "Lua"
-local CONFIG_FILE = LUA_DIR .. "/respawn_config.json"
-local DEATHS_FILE = LUA_DIR .. "/respawn_deaths.json"
-local RESETS_FILE = LUA_DIR .. "/respawn_resets.json"
+local CONFIG_FILE = "respawn_config.json"
+local DEATHS_FILE = "respawn_deaths.json"
+local RESETS_FILE = "respawn_resets.json"
+local KICKS_FILE = "respawn_kicks.json"
 
 -- In-memory state
 local config = { enabled = false, delay_minutes = 60 }
 local deathRecords = {} -- { username = epoch_timestamp }
+local deadPlayers = {} -- { username = true } — tracks who we've already recorded as dead
 
 --- Read a JSON file and return parsed data or nil
 local function readJsonFile(path)
@@ -93,6 +97,7 @@ local function processResets()
     for _, username in ipairs(data.resets) do
         if deathRecords[username] then
             deathRecords[username] = nil
+            deadPlayers[username] = nil
             count = count + 1
         end
     end
@@ -115,6 +120,7 @@ local function cleanExpired()
     for username, deathTime in pairs(deathRecords) do
         if (now - deathTime) >= delaySeconds then
             deathRecords[username] = nil
+            deadPlayers[username] = nil
             cleaned = cleaned + 1
         end
     end
@@ -124,92 +130,94 @@ local function cleanExpired()
     end
 end
 
---- Called when a player dies
-function ZM_RespawnDelay.onPlayerDeath(player)
-    if not player then
-        return
-    end
-    if not config.enabled then
-        return
-    end
-
-    local username = player:getUsername()
-    if not username then
-        return
+--- Write kick requests for Laravel to process via RCON.
+--- Laravel reads this file and executes "kickuser" RCON commands.
+local function requestKick(username, remainingMinutes)
+    -- Read existing kick queue (may have entries from other players)
+    local data = readJsonFile(KICKS_FILE)
+    local kicks = {}
+    if data and data.kicks then
+        kicks = data.kicks
     end
 
-    deathRecords[username] = os.time()
-    saveDeathRecords()
-    print("[ZomboidManager] RespawnDelay: recorded death for " .. username)
+    -- Avoid duplicate entries
+    for _, entry in ipairs(kicks) do
+        if entry.username == username then
+            return
+        end
+    end
+
+    table.insert(kicks, {
+        username = username,
+        reason = "Respawn cooldown: " .. remainingMinutes .. " minute(s) remaining. Please wait.",
+        timestamp = os.time(),
+    })
+
+    writeJsonFile(KICKS_FILE, { kicks = kicks })
+    print("[ZomboidManager] RespawnDelay: queued kick for " .. username .. " (" .. remainingMinutes .. " min remaining)")
 end
 
---- Called when a player creates a new character (OnCreatePlayer).
---- Returns true if the player was kicked (caller should return early).
-function ZM_RespawnDelay.checkRespawnCooldown(player)
-    if not player then
-        return false
-    end
-    if not config.enabled then
-        return false
-    end
-
-    local username = player:getUsername()
-    if not username then
-        return false
-    end
-
-    local deathTime = deathRecords[username]
-    if not deathTime then
-        return false
+--- Scan all online players for deaths and respawns.
+--- Called every game minute from the tick() function.
+local function scanPlayers()
+    local players = getOnlinePlayers()
+    if not players then
+        return
     end
 
     local now = os.time()
     local delaySeconds = config.delay_minutes * 60
-    local elapsed = now - deathTime
-    local remaining = delaySeconds - elapsed
 
-    if remaining <= 0 then
-        -- Cooldown expired, clean up and allow
-        deathRecords[username] = nil
-        saveDeathRecords()
-        return false
-    end
+    for i = 0, players:size() - 1 do
+        local player = players:get(i)
+        if player then
+            local ok, err = pcall(function()
+                local username = player:getUsername()
+                if not username then
+                    return
+                end
 
-    -- Cooldown active — disconnect the player
-    local remainingMinutes = math.ceil(remaining / 60)
-    local message = "Respawn cooldown: " .. remainingMinutes .. " minute(s) remaining"
+                if player:isDead() then
+                    -- Player is dead — record death if not already tracked
+                    if not deadPlayers[username] then
+                        deadPlayers[username] = true
+                        deathRecords[username] = now
+                        saveDeathRecords()
+                        print("[ZomboidManager] RespawnDelay: recorded death for " .. username)
+                    end
+                else
+                    -- Player is alive — clear dead flag
+                    deadPlayers[username] = nil
 
-    local ok, err = pcall(function()
-        player:getNetworkCharacterAI():setConnectionState("fully-connected")
-    end)
-
-    local kickOk, kickErr = pcall(function()
-        local connection = player:getNetworkCharacterAI()
-        if connection and connection.disconnect then
-            connection:disconnect(message)
-        else
-            -- Fallback: use server command to kick
-            if ServerAPI and ServerAPI.kick then
-                ServerAPI.kick(username, message)
+                    -- Check if this player has an active cooldown (they just respawned)
+                    local deathTime = deathRecords[username]
+                    if deathTime then
+                        local remaining = delaySeconds - (now - deathTime)
+                        if remaining > 0 then
+                            local remainingMinutes = math.ceil(remaining / 60)
+                            requestKick(username, remainingMinutes)
+                        else
+                            -- Cooldown expired, clean up
+                            deathRecords[username] = nil
+                            saveDeathRecords()
+                        end
+                    end
+                end
+            end)
+            if not ok then
+                print("[ZomboidManager] RespawnDelay: scan error: " .. tostring(err))
             end
         end
-    end)
-
-    if not kickOk then
-        print("[ZomboidManager] RespawnDelay: failed to disconnect " .. username .. ": " .. tostring(kickErr))
-    else
-        print("[ZomboidManager] RespawnDelay: kicked " .. username .. " (" .. remainingMinutes .. " min remaining)")
     end
-
-    return true
 end
 
---- Called every minute: reload config, process resets, clean expired entries
+--- Called every minute: reload config, process resets, scan players, clean expired
 function ZM_RespawnDelay.tick()
     loadConfig()
     processResets()
 
     if config.enabled then
+        scanPlayers()
         cleanExpired()
     end
 end

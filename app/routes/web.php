@@ -83,6 +83,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::patch('respawn-delay', [Admin\RespawnDelayController::class, 'update'])->name('respawn-delay.update');
         Route::post('respawn-delay/{username}/reset', [Admin\RespawnDelayController::class, 'reset'])->name('respawn-delay.reset');
 
+        // Safe Zones
+        Route::get('safe-zones', [Admin\SafeZoneController::class, 'index'])->name('safe-zones.index');
+        Route::patch('safe-zones/config', [Admin\SafeZoneController::class, 'updateConfig'])->name('safe-zones.config.update');
+        Route::post('safe-zones', [Admin\SafeZoneController::class, 'store'])->name('safe-zones.store');
+        Route::delete('safe-zones/{zoneId}', [Admin\SafeZoneController::class, 'destroy'])->name('safe-zones.destroy');
+        Route::post('safe-zones/violations/{id}/resolve', [Admin\SafeZoneController::class, 'resolveViolation'])->name('safe-zones.violations.resolve');
+
         // Server Control
         Route::post('server/start', [Admin\ServerController::class, 'start'])->name('server.start');
         Route::post('server/stop', [Admin\ServerController::class, 'stop'])->name('server.stop');

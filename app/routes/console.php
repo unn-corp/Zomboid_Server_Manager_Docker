@@ -18,6 +18,10 @@ Schedule::command('pz:sync-accounts')->everyFiveMinutes();
 
 Schedule::command('zomboid:sync-player-stats')->everyTenMinutes();
 
+Schedule::command('zomboid:import-pvp-violations')->everyMinute();
+
+Schedule::command('zomboid:process-respawn-kicks')->everyMinute();
+
 Schedule::command('zomboid:parse-game-events')->everyFiveMinutes();
 
 Schedule::command('zomboid:generate-map-tiles')

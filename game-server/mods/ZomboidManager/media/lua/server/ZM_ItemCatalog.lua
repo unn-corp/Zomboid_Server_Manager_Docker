@@ -8,8 +8,7 @@ local JSON = require("ZM_JSON")
 
 ZM_ItemCatalog = {}
 
-local LUA_DIR = "Lua"
-local CATALOG_FILE = LUA_DIR .. "/items_catalog.json"
+local CATALOG_FILE = "items_catalog.json"
 
 --- Get ISO 8601 timestamp using PZ's calendar
 local function getTimestamp()

@@ -30,7 +30,13 @@ class RespawnDelayController extends Controller
         $delayMinutes = (int) $request->validated('delay_minutes');
 
         $before = $this->respawnDelay->getConfig();
-        $this->respawnDelay->updateConfig($enabled, $delayMinutes);
+        $success = $this->respawnDelay->updateConfig($enabled, $delayMinutes);
+
+        if (! $success) {
+            return response()->json([
+                'message' => 'Failed to write respawn config — check lua-bridge volume permissions',
+            ], 500);
+        }
 
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',

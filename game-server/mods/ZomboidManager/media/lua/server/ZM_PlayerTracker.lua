@@ -6,8 +6,7 @@ local JSON = require("ZM_JSON")
 
 ZM_PlayerTracker = {}
 
-local LUA_DIR = "Lua"
-local POSITIONS_FILE = LUA_DIR .. "/players_live.json"
+local POSITIONS_FILE = "players_live.json"
 
 --- Get ISO 8601 timestamp
 local function getTimestamp()

@@ -102,6 +102,9 @@ return [
         'respawn_config' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/respawn_config.json',
         'respawn_deaths' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/respawn_deaths.json',
         'respawn_resets' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/respawn_resets.json',
+        'respawn_kicks' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/respawn_kicks.json',
+        'safezone_config' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/safezone_config.json',
+        'safezone_violations' => env('LUA_BRIDGE_PATH', '/lua-bridge').'/safezone_violations.json',
     ],
 
     /*

@@ -7,8 +7,7 @@ local JSON = require("ZM_JSON")
 
 ZM_InventoryExporter = {}
 
-local LUA_DIR = "Lua"
-local INVENTORY_DIR = LUA_DIR .. "/inventory"
+local INVENTORY_DIR = "inventory"
 
 --- Get ISO 8601 timestamp using PZ's calendar
 local function getTimestamp()
