@@ -4,6 +4,7 @@
 --
 
 local JSON = require("ZM_JSON")
+require("ZM_InventoryExporter")
 
 ZM_DeliveryQueue = {}
 
@@ -205,6 +206,8 @@ function ZM_DeliveryQueue.process()
                 if success then
                     result.status = "delivered"
                     print("[ZomboidManager] Delivered: " .. entry.action .. " " .. (entry.count or 1) .. "x " .. entry.item_type .. " for " .. entry.username)
+                    -- Re-export inventory so the web reflects the change immediately
+                    ZM_InventoryExporter.exportPlayer(player)
                 else
                     result.message = errMsg
                     print("[ZomboidManager] Failed delivery: " .. tostring(errMsg))

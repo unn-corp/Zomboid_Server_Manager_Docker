@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class InventoryController extends Controller
 {
-    private const USERNAME_PATTERN = '/^[a-zA-Z0-9_-]+$/';
+    private const USERNAME_PATTERN = '/^[a-zA-Z0-9_ -]+$/';
 
     public function __construct(
         private readonly InventoryReader $inventoryReader,

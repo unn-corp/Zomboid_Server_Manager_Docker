@@ -30,13 +30,8 @@ local function onCreatePlayer(playerIndex, player)
     ZM_DeliveryQueue.process()
 end
 
---- EveryTenMinutes — periodic bulk export
+--- EveryTenMinutes — heavy periodic exports (stats)
 local function onEveryTenMinutes()
-    local count = ZM_InventoryExporter.exportAll()
-    if count > 0 then
-        print("[ZomboidManager] Exported " .. count .. " player inventories")
-    end
-
     -- Export player positions
     ZM_PlayerTracker.exportPositions()
 
@@ -47,8 +42,14 @@ local function onEveryTenMinutes()
     end
 end
 
---- EveryOneMinute — check delivery queue + update live positions + game state
+--- EveryOneMinute — inventory export, delivery queue, live positions, game state
 local function onEveryOneMinute()
+    -- Export all player inventories every minute for near-real-time web updates
+    local invCount = ZM_InventoryExporter.exportAll()
+    if invCount > 0 then
+        print("[ZomboidManager] Exported " .. invCount .. " player inventories")
+    end
+
     local processed = ZM_DeliveryQueue.process()
     if processed > 0 then
         print("[ZomboidManager] Processed " .. processed .. " delivery entries")

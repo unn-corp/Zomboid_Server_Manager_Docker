@@ -389,109 +389,109 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                 )}
                             </CardContent>
                         </Card>
-
-                        {/* Delivery Status Panel */}
-                        <Collapsible open={deliveryOpen} onOpenChange={setDeliveryOpen}>
-                            <Card>
-                                <CollapsibleTrigger asChild>
-                                    <CardHeader className="cursor-pointer">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <CardTitle>Delivery Queue</CardTitle>
-                                                {totalDeliveries > 0 && (
-                                                    <Badge variant="secondary">
-                                                        {totalDeliveries}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <ChevronDown
-                                                className={`text-muted-foreground size-4 transition-transform ${deliveryOpen ? 'rotate-180' : ''}`}
-                                            />
-                                        </div>
-                                        <CardDescription>
-                                            Pending and completed item deliveries
-                                        </CardDescription>
-                                    </CardHeader>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                    <CardContent>
-                                        {totalDeliveries > 0 ? (
-                                            <div className="space-y-2">
-                                                {deliveries.pending.map((entry) => (
-                                                    <div
-                                                        key={entry.id}
-                                                        className="flex flex-col gap-1.5 rounded-lg border border-border/50 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <Circle className="size-2 shrink-0 fill-yellow-500 text-yellow-500" />
-                                                            <span className="text-sm font-medium">
-                                                                {entry.action === 'give'
-                                                                    ? 'Give'
-                                                                    : 'Remove'}{' '}
-                                                                {entry.item_type}
-                                                            </span>
-                                                            <Badge variant="outline" className="text-xs">
-                                                                x{entry.count}
-                                                            </Badge>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="secondary" className="text-xs">
-                                                                pending
-                                                            </Badge>
-                                                            <span className="text-muted-foreground text-xs">
-                                                                {formatRelativeTime(entry.created_at)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {deliveries.results.map((result) => (
-                                                    <div
-                                                        key={result.id}
-                                                        className="flex flex-col gap-1.5 rounded-lg border border-border/50 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <Circle
-                                                                className={`size-2 shrink-0 ${
-                                                                    result.status === 'delivered'
-                                                                        ? 'fill-green-500 text-green-500'
-                                                                        : 'fill-red-500 text-red-500'
-                                                                }`}
-                                                            />
-                                                            <span className="text-sm">
-                                                                {result.message ?? result.status}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge
-                                                                variant={
-                                                                    result.status === 'delivered'
-                                                                        ? 'secondary'
-                                                                        : 'destructive'
-                                                                }
-                                                                className="text-xs"
-                                                            >
-                                                                {result.status}
-                                                            </Badge>
-                                                            <span className="text-muted-foreground text-xs">
-                                                                {formatRelativeTime(
-                                                                    result.processed_at,
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-muted-foreground py-4 text-center text-sm">
-                                                No delivery entries for this player
-                                            </p>
-                                        )}
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
                     </>
                 )}
+
+                {/* Delivery Status Panel — always visible */}
+                <Collapsible open={deliveryOpen} onOpenChange={setDeliveryOpen}>
+                    <Card>
+                        <CollapsibleTrigger asChild>
+                            <CardHeader className="cursor-pointer">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle>Delivery Queue</CardTitle>
+                                        {totalDeliveries > 0 && (
+                                            <Badge variant="secondary">
+                                                {totalDeliveries}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <ChevronDown
+                                        className={`text-muted-foreground size-4 transition-transform ${deliveryOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </div>
+                                <CardDescription>
+                                    Pending and completed item deliveries
+                                </CardDescription>
+                            </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <CardContent>
+                                {totalDeliveries > 0 ? (
+                                    <div className="space-y-2">
+                                        {deliveries.pending.map((entry) => (
+                                            <div
+                                                key={entry.id}
+                                                className="flex flex-col gap-1.5 rounded-lg border border-border/50 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Circle className="size-2 shrink-0 fill-yellow-500 text-yellow-500" />
+                                                    <span className="text-sm font-medium">
+                                                        {entry.action === 'give'
+                                                            ? 'Give'
+                                                            : 'Remove'}{' '}
+                                                        {entry.item_type}
+                                                    </span>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        x{entry.count}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        pending
+                                                    </Badge>
+                                                    <span className="text-muted-foreground text-xs">
+                                                        {formatRelativeTime(entry.created_at)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {deliveries.results.map((result) => (
+                                            <div
+                                                key={result.id}
+                                                className="flex flex-col gap-1.5 rounded-lg border border-border/50 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Circle
+                                                        className={`size-2 shrink-0 ${
+                                                            result.status === 'delivered'
+                                                                ? 'fill-green-500 text-green-500'
+                                                                : 'fill-red-500 text-red-500'
+                                                        }`}
+                                                    />
+                                                    <span className="text-sm">
+                                                        {result.message ?? result.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge
+                                                        variant={
+                                                            result.status === 'delivered'
+                                                                ? 'secondary'
+                                                                : 'destructive'
+                                                        }
+                                                        className="text-xs"
+                                                    >
+                                                        {result.status}
+                                                    </Badge>
+                                                    <span className="text-muted-foreground text-xs">
+                                                        {formatRelativeTime(
+                                                            result.processed_at,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground py-4 text-center text-sm">
+                                        No delivery entries for this player
+                                    </p>
+                                )}
+                            </CardContent>
+                        </CollapsibleContent>
+                    </Card>
+                </Collapsible>
             </div>
 
             {/* Give Item Dialog */}
@@ -506,7 +506,7 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                     }
                 }}
             >
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="overflow-hidden sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Give Item to {username}</DialogTitle>
                         <DialogDescription>
@@ -545,11 +545,11 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                         onClick={() => setGiveSelected(item)}
                                     >
                                         <ItemIcon src={item.icon} name={item.name} size={24} />
-                                        <div className="min-w-0 flex-1">
-                                            <span className="font-medium">{item.name}</span>
-                                            <span className="text-muted-foreground ml-2 text-xs">
+                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                            <span className="truncate font-medium">{item.name}</span>
+                                            <p className="text-muted-foreground truncate text-xs">
                                                 {item.full_type}
-                                            </span>
+                                            </p>
                                         </div>
                                     </button>
                                 ))
@@ -567,9 +567,9 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                                     name={giveSelected.name}
                                     size={32}
                                 />
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">{giveSelected.name}</p>
-                                    <p className="text-muted-foreground text-xs">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium">{giveSelected.name}</p>
+                                    <p className="text-muted-foreground truncate text-xs">
                                         {giveSelected.full_type}
                                     </p>
                                 </div>
