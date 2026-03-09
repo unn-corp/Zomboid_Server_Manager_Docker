@@ -7,12 +7,15 @@ use App\Http\Requests\Api\RestartServerRequest;
 use App\Http\Requests\Api\ServerLogsRequest;
 use App\Jobs\RestartGameServer;
 use App\Jobs\SendServerWarning;
+use App\Jobs\UpdateGameServer;
 use App\Services\AuditLogger;
 use App\Services\DockerManager;
+use App\Services\GameVersionReader;
 use App\Services\RconClient;
 use App\Services\ServerStatusResolver;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ServerController
 {
@@ -21,6 +24,7 @@ class ServerController
         private readonly DockerManager $docker,
         private readonly AuditLogger $auditLogger,
         private readonly ServerStatusResolver $statusResolver,
+        private readonly GameVersionReader $versionReader,
     ) {}
 
     public function status(): JsonResponse
@@ -35,6 +39,8 @@ class ServerController
             'uptime' => $resolved['uptime'],
             'map' => $resolved['map'],
             'max_players' => $resolved['max_players'],
+            'game_version' => $resolved['game_version'],
+            'steam_branch' => $resolved['steam_branch'],
         ]);
     }
 
@@ -173,6 +179,50 @@ class ServerController
 
         return response()->json([
             'message' => 'Broadcast sent',
+        ]);
+    }
+
+    public function version(): JsonResponse
+    {
+        return response()->json([
+            'game_version' => $this->versionReader->getCachedVersion(),
+            'steam_branch' => $this->versionReader->getCurrentBranch(),
+            'available_branches' => ['public', 'unstable', 'iwillbackupmysave'],
+        ]);
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        $request->validate([
+            'branch' => ['sometimes', 'string', 'in:public,unstable,iwillbackupmysave'],
+            'countdown' => ['sometimes', 'integer', 'min:10', 'max:3600'],
+            'message' => ['sometimes', 'nullable', 'string', 'max:500'],
+        ]);
+
+        $countdown = $request->input('countdown');
+        $message = $request->input('message');
+        $branch = $request->input('branch');
+
+        if ($countdown) {
+            $warningMessage = $message ?? "Server updating in {$countdown} seconds";
+
+            try {
+                $this->rcon->connect();
+                $this->rcon->command("servermsg \"{$warningMessage}\"");
+            } catch (\Throwable) {
+                // RCON unavailable — still schedule the update
+            }
+
+            SendServerWarning::dispatchCountdownWarnings($countdown, 'updating', 'server.pending_action:update');
+        }
+
+        UpdateGameServer::dispatch($request->ip(), $branch)
+            ->delay($countdown ? now()->addSeconds($countdown) : null);
+
+        return response()->json([
+            'message' => $countdown
+                ? "Server update scheduled in {$countdown} seconds"
+                : 'Server update initiated',
         ]);
     }
 

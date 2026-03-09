@@ -6,12 +6,27 @@
 # Apply server configuration from environment variables
 bash /home/steam/configure-server.sh
 
-# Determine SteamCMD beta branch
-BRANCH="${PZ_STEAM_BRANCH:-public}"
+# Branch override from shared volume (written by web UI)
+OVERRIDE_FILE="/home/steam/Zomboid/.steam_branch"
+if [ -f "$OVERRIDE_FILE" ]; then
+    BRANCH=$(cat "$OVERRIDE_FILE")
+    echo "[entrypoint] Branch override: $BRANCH"
+else
+    BRANCH="${PZ_STEAM_BRANCH:-public}"
+fi
+
 if [ "$BRANCH" = "public" ]; then
   BETA_FLAG=""
 else
   BETA_FLAG="-beta $BRANCH"
+fi
+
+# Force update flag from shared volume (written by web UI)
+FORCE_FILE="/home/steam/Zomboid/.force_update"
+if [ -f "$FORCE_FILE" ]; then
+    echo "[entrypoint] Force update flag detected"
+    rm -f "$FORCE_FILE"
+    PZ_FORCE_UPDATE=true
 fi
 
 # Only run SteamCMD if server files are missing or PZ_FORCE_UPDATE=true

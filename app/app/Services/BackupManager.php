@@ -12,6 +12,7 @@ class BackupManager
     public function __construct(
         private readonly RconClient $rcon,
         private readonly DockerManager $docker,
+        private readonly GameVersionReader $versionReader,
     ) {}
 
     /**
@@ -39,6 +40,8 @@ class BackupManager
             'path' => $fullPath,
             'size_bytes' => $sizeBytes,
             'type' => $type,
+            'game_version' => $this->versionReader->getCachedVersion(),
+            'steam_branch' => $this->versionReader->getCurrentBranch(),
             'notes' => $notes,
         ]);
 

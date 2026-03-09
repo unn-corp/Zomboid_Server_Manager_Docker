@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RestartServerRequest;
 use App\Http\Requests\Admin\StopServerRequest;
+use App\Http\Requests\Admin\UpdateServerRequest;
 use App\Http\Requests\Admin\WipeServerRequest;
 use App\Jobs\RestartGameServer;
 use App\Jobs\SendServerWarning;
 use App\Jobs\StopGameServer;
+use App\Jobs\UpdateGameServer;
 use App\Jobs\WaitForServerReady;
 use App\Jobs\WipeGameServer;
 use App\Services\AuditLogger;
@@ -243,5 +245,54 @@ class ServerController extends Controller
         WipeGameServer::dispatch($request->ip());
 
         return response()->json(['message' => 'Server wipe in progress']);
+    }
+
+    public function update(UpdateServerRequest $request): JsonResponse
+    {
+        $countdown = $request->validated('countdown');
+        $message = $request->validated('message');
+        $branch = $request->validated('branch');
+
+        if ($countdown) {
+            $warningMessage = $message ?? "Server updating in {$countdown} seconds — you will be disconnected";
+
+            try {
+                $this->rcon->connect();
+                $this->rcon->command("servermsg \"{$warningMessage}\"");
+            } catch (\Throwable) {
+                // RCON unavailable — still schedule the update
+            }
+
+            SendServerWarning::dispatchCountdownWarnings($countdown, 'updating', 'server.pending_action:update');
+
+            $this->auditLogger->log(
+                actor: $request->user()->name ?? 'admin',
+                action: 'server.update.scheduled',
+                ip: $request->ip(),
+                details: array_filter([
+                    'countdown' => $countdown,
+                    'branch' => $branch,
+                ]),
+            );
+
+            UpdateGameServer::dispatch($request->ip(), $branch)
+                ->delay(now()->addSeconds($countdown));
+
+            return response()->json([
+                'message' => "Server update scheduled in {$countdown} seconds",
+                'countdown' => $countdown,
+            ]);
+        }
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'server.update',
+            ip: $request->ip(),
+            details: array_filter(['branch' => $branch]),
+        );
+
+        UpdateGameServer::dispatch($request->ip(), $branch);
+
+        return response()->json(['message' => 'Server update in progress']);
     }
 }

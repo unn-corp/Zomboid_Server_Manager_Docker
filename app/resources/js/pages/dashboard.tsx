@@ -1,6 +1,7 @@
 import { Deferred, Head, router, usePoll } from '@inertiajs/react';
 import {
     Archive,
+    ArrowUpCircle,
     Circle,
     HardDrive,
     Map,
@@ -83,6 +84,11 @@ export default function Dashboard({
     const [wipeMessage, setWipeMessage] = useState('');
     const [wipeLoading, setWipeLoading] = useState(false);
     const [wipeConfirmStep, setWipeConfirmStep] = useState(0);
+    const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+    const [updateBranch, setUpdateBranch] = useState(server.steam_branch ?? 'public');
+    const [updateCountdown, setUpdateCountdown] = useState('0');
+    const [updateMessage, setUpdateMessage] = useState('');
+    const [updateLoading, setUpdateLoading] = useState(false);
 
     usePoll(5000, { only: ['server', 'game_state'] });
 
@@ -152,6 +158,27 @@ export default function Dashboard({
         setTimeout(() => router.reload({ only: ['server'] }), 2000);
     }
 
+    async function handleUpdate() {
+        setUpdateLoading(true);
+        const countdown = parseInt(updateCountdown, 10);
+        const data: Record<string, unknown> = {};
+        if (updateBranch !== (server.steam_branch ?? 'public')) {
+            data.branch = updateBranch;
+        }
+        if (countdown > 0) {
+            data.countdown = countdown;
+            if (updateMessage.trim()) {
+                data.message = updateMessage.trim();
+            }
+        }
+        await fetchAction('/admin/server/update', { data: Object.keys(data).length > 0 ? data : undefined });
+        setUpdateLoading(false);
+        setShowUpdateDialog(false);
+        setUpdateCountdown('0');
+        setUpdateMessage('');
+        setTimeout(() => router.reload({ only: ['server'] }), 2000);
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -187,6 +214,14 @@ export default function Dashboard({
                                 </p>
                             )}
                         </div>
+                        {server.game_version && (
+                            <Badge variant="secondary" className="shrink-0">
+                                v{server.game_version}
+                                {server.steam_branch && server.steam_branch !== 'public' && (
+                                    <span className="ml-1 opacity-70">({server.steam_branch})</span>
+                                )}
+                            </Badge>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {server.online ? (
@@ -229,6 +264,18 @@ export default function Dashboard({
                                 Start
                             </Button>
                         )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading !== null}
+                            onClick={() => {
+                                setUpdateBranch(server.steam_branch ?? 'public');
+                                setShowUpdateDialog(true);
+                            }}
+                        >
+                            <ArrowUpCircle className="mr-1.5 size-3.5" />
+                            Update
+                        </Button>
                         <Button
                             variant="destructive"
                             size="sm"
@@ -591,6 +638,88 @@ export default function Dashboard({
                                 : stopCountdown === '0'
                                   ? 'Stop Now'
                                   : 'Schedule Shutdown'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Game Server</DialogTitle>
+                        <DialogDescription>
+                            Force a SteamCMD re-download. Optionally change the Steam branch.
+                            A pre-update backup will be created automatically.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">
+                            {server.game_version
+                                ? `Current version: v${server.game_version} (${server.steam_branch ?? 'public'})`
+                                : `Current branch: ${server.steam_branch ?? 'public'}`}
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="update-branch">Steam Branch</Label>
+                            <Select value={updateBranch} onValueChange={setUpdateBranch}>
+                                <SelectTrigger id="update-branch">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="public">public</SelectItem>
+                                    <SelectItem value="unstable">unstable</SelectItem>
+                                    <SelectItem value="iwillbackupmysave">iwillbackupmysave</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="update-countdown">Countdown</Label>
+                            <Select value={updateCountdown} onValueChange={setUpdateCountdown}>
+                                <SelectTrigger id="update-countdown">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {COUNTDOWN_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {updateCountdown !== '0' && (
+                            <div className="grid gap-2">
+                                <Label htmlFor="update-message">Warning message (optional)</Label>
+                                <Input
+                                    id="update-message"
+                                    placeholder="Server updating — expect downtime..."
+                                    value={updateMessage}
+                                    onChange={(e) => setUpdateMessage(e.target.value)}
+                                    maxLength={500}
+                                />
+                            </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            The server will be stopped, SteamCMD will re-download game files, then the server will restart.
+                            This may take several minutes depending on download speed.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowUpdateDialog(false)}
+                            disabled={updateLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdate}
+                            disabled={updateLoading}
+                        >
+                            {updateLoading
+                                ? 'Updating...'
+                                : updateCountdown === '0'
+                                  ? 'Update Now'
+                                  : 'Schedule Update'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

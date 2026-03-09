@@ -30,6 +30,13 @@ class DiscordWebhookService
         'server.wipe.executed' => ['color' => 0xE74C3C, 'emoji' => "\u{1F4A3}", 'title' => 'Server Wipe Started'],
         'server.wipe.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Online (Post-Wipe)'],
 
+        // Update
+        'server.update' => ['color' => 0x3498DB, 'emoji' => "\u{2B06}", 'title' => 'Server Updating'],
+        'server.update.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Update Scheduled'],
+        'server.update.executed' => ['color' => 0x3498DB, 'emoji' => "\u{2B06}", 'title' => 'Server Update Started'],
+        'server.update.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Online (Post-Update)'],
+        'server.branch.changed' => ['color' => 0x9B59B6, 'emoji' => "\u{1F500}", 'title' => 'Steam Branch Changed'],
+
         // Backup
         'backup.create' => ['color' => 0x2ECC71, 'emoji' => "\u{1F4E6}", 'title' => 'Backup Started'],
         'backup.created' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Backup Completed'],

@@ -7,6 +7,8 @@ export type ServerStatus = {
     uptime: string | null;
     map: string | null;
     max_players: number | null;
+    game_version: string | null;
+    steam_branch: string | null;
 };
 
 export type ModEntry = {
@@ -31,6 +33,8 @@ export type BackupEntry = {
     size_bytes: number;
     size_human: string;
     type: 'manual' | 'scheduled' | 'daily' | 'pre_rollback' | 'pre_update';
+    game_version: string | null;
+    steam_branch: string | null;
     notes: string | null;
     created_at: string;
 };

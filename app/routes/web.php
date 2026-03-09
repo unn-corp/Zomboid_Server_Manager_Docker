@@ -99,6 +99,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::post('server/restart', [Admin\ServerController::class, 'restart'])->name('server.restart');
         Route::post('server/save', [Admin\ServerController::class, 'save'])->name('server.save');
         Route::post('server/wipe', [Admin\ServerController::class, 'wipe'])->name('server.wipe');
+        Route::post('server/update', [Admin\ServerController::class, 'update'])->name('server.update');
     });
 });
 

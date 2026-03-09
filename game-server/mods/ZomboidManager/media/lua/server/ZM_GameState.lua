@@ -110,6 +110,12 @@ function ZM_GameState.export()
         end
     end
 
+    -- Game version (e.g. "42.0.3")
+    local okVer, version = pcall(function() return getCore():getVersion() end)
+    if okVer and version then
+        state.game_version = tostring(version)
+    end
+
     local okT, now = pcall(os.time)
     if okT then
         state.exported_at = os.date("!%Y-%m-%dT%H:%M:%SZ", now)

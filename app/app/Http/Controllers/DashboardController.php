@@ -32,6 +32,8 @@ class DashboardController extends Controller
             'uptime' => $resolved['uptime'],
             'map' => $resolved['map'],
             'max_players' => $resolved['max_players'],
+            'game_version' => $resolved['game_version'],
+            'steam_branch' => $resolved['steam_branch'],
         ];
 
         $recentAudit = AuditLog::query()

@@ -1,5 +1,5 @@
 import { Deferred, Head, router } from '@inertiajs/react';
-import { Archive, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Archive, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,13 @@ const typeColors: Record<string, string> = {
     pre_update: 'bg-orange-500/10 text-orange-500',
 };
 
-export default function Backups({ backups }: { backups: PaginatedBackups }) {
+type BackupsProps = {
+    backups: PaginatedBackups;
+    current_version: string | null;
+    current_branch: string | null;
+};
+
+export default function Backups({ backups, current_version, current_branch }: BackupsProps) {
     const [showCreate, setShowCreate] = useState(false);
     const [rollbackTarget, setRollbackTarget] = useState<BackupEntry | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<BackupEntry | null>(null);
@@ -69,6 +75,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
     const [loading, setLoading] = useState(false);
     const [rollbackCountdown, setRollbackCountdown] = useState('0');
     const [rollbackMessage, setRollbackMessage] = useState('');
+    const [switchBranch, setSwitchBranch] = useState(false);
     const [search, setSearch] = useState('');
 
     const filteredBackups = useMemo(() => {
@@ -108,6 +115,9 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                 data.message = rollbackMessage.trim();
             }
         }
+        if (switchBranch && backup.steam_branch && backup.steam_branch !== current_branch) {
+            data.switch_branch = backup.steam_branch;
+        }
         await fetchAction(`/admin/backups/${backup.id}/rollback`, {
             data,
             successMessage: countdown > 0
@@ -118,6 +128,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
         setRollbackTarget(null);
         setRollbackCountdown('0');
         setRollbackMessage('');
+        setSwitchBranch(false);
         router.reload();
     }
 
@@ -175,6 +186,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                                     <TableRow>
                                         <TableHead>Filename</TableHead>
                                         <TableHead className="hidden sm:table-cell">Type</TableHead>
+                                        <TableHead className="hidden md:table-cell">Version</TableHead>
                                         <TableHead className="hidden sm:table-cell">Size</TableHead>
                                         <TableHead className="hidden md:table-cell">Date</TableHead>
                                         <TableHead className="hidden lg:table-cell">Notes</TableHead>
@@ -186,6 +198,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                                         <TableRow key={i}>
                                             <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                                             <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                                            <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                                             <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                                             <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
                                             <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
@@ -206,6 +219,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                                         <TableRow>
                                             <TableHead>Filename</TableHead>
                                             <TableHead className="hidden sm:table-cell">Type</TableHead>
+                                            <TableHead className="hidden md:table-cell">Version</TableHead>
                                             <TableHead className="hidden sm:table-cell">Size</TableHead>
                                             <TableHead className="hidden md:table-cell">Date</TableHead>
                                             <TableHead className="hidden lg:table-cell">Notes</TableHead>
@@ -220,6 +234,11 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                                                     <Badge className={`text-xs ${typeColors[backup.type] ?? ''}`}>
                                                         {backup.type}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {backup.game_version ? `v${backup.game_version}` : 'Unknown'}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell className="hidden tabular-nums sm:table-cell">
                                                     {backup.size_human}
@@ -336,6 +355,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                 setRollbackTarget(null);
                 setRollbackCountdown('0');
                 setRollbackMessage('');
+                setSwitchBranch(false);
             }}>
                 <DialogContent>
                     <DialogHeader>
@@ -346,6 +366,34 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                        {/* Version mismatch warning */}
+                        {rollbackTarget && current_version && rollbackTarget.game_version && rollbackTarget.game_version !== current_version && (
+                            <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
+                                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                                <div>
+                                    <p className="font-medium">Version mismatch</p>
+                                    <p>
+                                        This backup was created on <strong>v{rollbackTarget.game_version}</strong>
+                                        {rollbackTarget.steam_branch && <> ({rollbackTarget.steam_branch})</>},
+                                        but the server is currently running <strong>v{current_version}</strong>
+                                        {current_branch && <> ({current_branch})</>}.
+                                        The save may not load correctly on a different game version.
+                                    </p>
+                                    {rollbackTarget.steam_branch && rollbackTarget.steam_branch !== current_branch && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <Checkbox
+                                                id="switch-branch"
+                                                checked={switchBranch}
+                                                onCheckedChange={(checked) => setSwitchBranch(checked === true)}
+                                            />
+                                            <Label htmlFor="switch-branch" className="cursor-pointer text-sm">
+                                                Also switch to <strong>{rollbackTarget.steam_branch}</strong> branch after rollback
+                                            </Label>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="grid gap-2">
                             <Label htmlFor="rollback-countdown">Countdown</Label>
                             <Select value={rollbackCountdown} onValueChange={setRollbackCountdown}>

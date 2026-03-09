@@ -72,16 +72,16 @@ it('completes backup create → delete cycle', function () {
 
     app()->instance(BackupManager::class, $mockManager);
 
-    // Create
+    // Create (202 Accepted — job dispatched to queue)
     $this->postJson('/api/backups', [], stage2Headers())
-        ->assertCreated();
+        ->assertStatus(202);
 
     // Delete
     $this->deleteJson("/api/backups/{$backup->id}", [], stage2Headers())
         ->assertOk()
         ->assertJson(['message' => 'Backup deleted']);
 
-    expect(AuditLog::where('action', 'backup.create')->exists())->toBeTrue()
+    expect(AuditLog::where('action', 'backup.created')->exists())->toBeTrue()
         ->and(AuditLog::where('action', 'backup.delete')->exists())->toBeTrue();
 });
 
@@ -186,8 +186,8 @@ it('maintains complete audit trail across all stage 2 features', function () {
     app()->instance(BackupManager::class, $mockManager);
 
     try {
-        // Backup create
-        $this->postJson('/api/backups', [], stage2Headers())->assertCreated();
+        // Backup create (202 Accepted — job dispatched to queue)
+        $this->postJson('/api/backups', [], stage2Headers())->assertStatus(202);
 
         // Backup delete
         $this->deleteJson("/api/backups/{$backup->id}", [], stage2Headers())->assertOk();
@@ -203,7 +203,7 @@ it('maintains complete audit trail across all stage 2 features', function () {
 
         // Verify all audit actions exist
         $actions = AuditLog::pluck('action')->unique()->sort()->values()->all();
-        expect($actions)->toContain('backup.create')
+        expect($actions)->toContain('backup.created')
             ->toContain('backup.delete')
             ->toContain('backup.schedule.update')
             ->toContain('whitelist.add')

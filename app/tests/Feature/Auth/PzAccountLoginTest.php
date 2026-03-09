@@ -180,13 +180,17 @@ describe('Sync-created user login', function () {
         $dbPath = setupPzSqliteForLogin();
         $pzHash = pzHashPassword('gamepass');
 
-        // Simulate sync command having stored the PZ hash as the web password
-        $user = User::forceCreate([
+        // Simulate sync command having stored the PZ hash as the web password.
+        // Use DB::table to bypass Eloquent's hashed cast which rejects non-standard bcrypt costs.
+        DB::table('users')->insert([
             'username' => 'sync_user',
             'name' => 'sync_user',
             'password' => $pzHash,
-            'role' => UserRole::Player,
+            'role' => UserRole::Player->value,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+        $user = User::where('username', 'sync_user')->first();
 
         insertPzLoginAccount('sync_user', 'gamepass');
 

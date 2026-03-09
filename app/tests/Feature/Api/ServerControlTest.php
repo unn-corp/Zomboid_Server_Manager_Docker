@@ -56,8 +56,12 @@ function mockRconOffline(): void
 {
     $rcon = Mockery::mock(RconClient::class);
     $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
-
     app()->instance(RconClient::class, $rcon);
+
+    $onlinePlayers = Mockery::mock(\App\Services\OnlinePlayersReader::class);
+    $onlinePlayers->shouldReceive('getOnlineUsernames')->andReturn([]);
+    $onlinePlayers->shouldReceive('getOnlinePlayers')->andReturn(['usernames' => [], 'source' => 'none']);
+    app()->instance(\App\Services\OnlinePlayersReader::class, $onlinePlayers);
 }
 
 function apiHeaders(): array

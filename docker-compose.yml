@@ -69,7 +69,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: php artisan queue:work redis --tries=3 --timeout=300 --sleep=3
+    command: php artisan queue:work redis --tries=3 --timeout=600 --sleep=3
     volumes:
       - ./app:/var/www/html
       - zomboid-data:/pz-data

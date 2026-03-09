@@ -29,6 +29,8 @@ Route::middleware(['auth.apikey', 'audit'])->group(function () {
     Route::post('/server/restart', [ServerController::class, 'restart']);
     Route::post('/server/save', [ServerController::class, 'save']);
     Route::post('/server/broadcast', [ServerController::class, 'broadcast']);
+    Route::post('/server/update', [ServerController::class, 'update']);
+    Route::get('/server/version', [ServerController::class, 'version']);
     Route::get('/server/logs', [ServerController::class, 'logs']);
 
     Route::get('/config/server', [ConfigController::class, 'showServer']);

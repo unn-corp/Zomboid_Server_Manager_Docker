@@ -11,6 +11,7 @@ use App\Jobs\SendServerWarning;
 use App\Models\Backup;
 use App\Services\AuditLogger;
 use App\Services\BackupManager;
+use App\Services\GameVersionReader;
 use App\Services\RconClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class BackupController extends Controller
         private readonly BackupManager $backupManager,
         private readonly AuditLogger $auditLogger,
         private readonly RconClient $rcon,
+        private readonly GameVersionReader $versionReader,
     ) {}
 
     public function index(Request $request): Response
@@ -37,6 +39,8 @@ class BackupController extends Controller
 
         return Inertia::render('admin/backups', [
             'backups' => Inertia::defer(fn () => BackupResource::collection($backups)),
+            'current_version' => $this->versionReader->getCachedVersion(),
+            'current_branch' => $this->versionReader->getCurrentBranch(),
         ]);
     }
 
@@ -91,6 +95,7 @@ class BackupController extends Controller
             'confirm' => 'required|boolean|accepted',
             'countdown' => 'sometimes|integer|min:10|max:3600',
             'message' => 'sometimes|nullable|string|max:500',
+            'switch_branch' => 'sometimes|nullable|string|in:public,unstable,iwillbackupmysave',
         ]);
 
         // Validate backup file exists before dispatching job
@@ -127,9 +132,11 @@ class BackupController extends Controller
             );
         }
 
+        $switchBranch = $validated['switch_branch'] ?? null;
+
         // Always dispatch via queue — queue worker runs as root,
         // which is required to overwrite game server files.
-        RollbackGameServer::dispatch($backup->id, $request->ip())
+        RollbackGameServer::dispatch($backup->id, $request->ip(), $switchBranch)
             ->delay($countdown ? now()->addSeconds($countdown) : null);
 
         return response()->json([

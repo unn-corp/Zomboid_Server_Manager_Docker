@@ -21,6 +21,8 @@ class BackupFactory extends Factory
             'path' => '/backups/backup_'.fake()->dateTimeThisMonth()->format('Y-m-d_H-i-s').'.tar.gz',
             'size_bytes' => fake()->numberBetween(1024 * 1024, 500 * 1024 * 1024),
             'type' => $type,
+            'game_version' => fake()->optional(0.7)->numerify('4#.#.##'),
+            'steam_branch' => fake()->optional(0.7)->randomElement(['public', 'unstable', 'iwillbackupmysave']),
             'notes' => fake()->optional(0.3)->sentence(),
             'created_at' => fake()->dateTimeBetween('-30 days'),
         ];

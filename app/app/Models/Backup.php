@@ -18,6 +18,8 @@ class Backup extends Model
         'path',
         'size_bytes',
         'type',
+        'game_version',
+        'steam_branch',
         'notes',
         'created_at',
     ];

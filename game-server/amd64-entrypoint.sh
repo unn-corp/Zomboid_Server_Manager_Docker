@@ -36,6 +36,23 @@ if [ -f "$CONFIGURE_SCRIPT" ]; then
     echo "[entrypoint] Patched run_server.sh to run configure-server.sh before start"
 fi
 
+# Branch override from shared volume (written by web UI)
+OVERRIDE_FILE="/home/steam/Zomboid/.steam_branch"
+if [ -f "$OVERRIDE_FILE" ]; then
+    GAME_VERSION=$(cat "$OVERRIDE_FILE")
+    export GAME_VERSION
+    echo "[entrypoint] Branch override: $GAME_VERSION"
+fi
+
+# Force update flag from shared volume (written by web UI)
+FORCE_FILE="/home/steam/Zomboid/.force_update"
+if [ -f "$FORCE_FILE" ]; then
+    echo "[entrypoint] Force update flag detected"
+    rm -f "$FORCE_FILE"
+    # Remove server binary to force SteamCMD re-download
+    rm -f /home/steam/ZomboidDedicatedServer/ProjectZomboid64
+fi
+
 # Prevent renegademaster image from overwriting Mods=/WorkshopItems= with empty values.
 # When these env vars are set to "" the image clears mods added via the web UI.
 if [ -z "${MOD_NAMES:-}" ]; then

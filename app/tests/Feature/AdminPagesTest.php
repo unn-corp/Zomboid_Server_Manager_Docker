@@ -346,7 +346,7 @@ it('renders the backup page', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('admin/backups')
-        ->has('backups')
+        // 'backups' is an Inertia::defer() prop — not in initial render
     );
 });
 
@@ -356,7 +356,7 @@ it('can create a backup via admin', function () {
     $response = $this->actingAs(adminUser())
         ->postJson('/admin/backups', ['notes' => 'Test backup']);
 
-    $response->assertCreated();
+    $response->assertStatus(202);
 });
 
 it('can delete a backup via admin', function () {
@@ -428,7 +428,7 @@ it('renders the audit log page', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('admin/audit')
-        ->has('logs')
+        // 'logs' is an Inertia::defer() prop — not in initial render
         ->has('filters')
         ->has('available_actions')
     );
@@ -532,6 +532,11 @@ it('renders the player map page with merged data', function () {
 it('renders player map with empty data', function () {
     mockPlayersDbReader([]);
     mockPlayerPositionReader(null);
+
+    $onlinePlayers = Mockery::mock(OnlinePlayersReader::class);
+    $onlinePlayers->shouldReceive('getOnlineUsernames')->andReturn([]);
+    $onlinePlayers->shouldReceive('getOnlinePlayers')->andReturn(['usernames' => [], 'source' => 'none']);
+    app()->instance(OnlinePlayersReader::class, $onlinePlayers);
 
     $response = $this->actingAs(adminUser())->get('/admin/players/map');
 

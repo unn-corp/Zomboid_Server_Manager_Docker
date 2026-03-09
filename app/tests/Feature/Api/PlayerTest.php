@@ -31,6 +31,11 @@ function mockPlayerRconOffline(): void
     $rcon = Mockery::mock(RconClient::class);
     $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
     app()->instance(RconClient::class, $rcon);
+
+    $onlinePlayers = Mockery::mock(\App\Services\OnlinePlayersReader::class);
+    $onlinePlayers->shouldReceive('getOnlineUsernames')->andReturn([]);
+    $onlinePlayers->shouldReceive('getOnlinePlayers')->andReturn(['usernames' => [], 'source' => 'none']);
+    app()->instance(\App\Services\OnlinePlayersReader::class, $onlinePlayers);
 }
 
 beforeEach(function () {
@@ -87,11 +92,11 @@ it('returns 404 for unknown player', function () {
         ->assertNotFound();
 });
 
-it('returns 503 when server offline for player show', function () {
+it('returns 404 when server offline for player show', function () {
     mockPlayerRconOffline();
 
     $this->getJson('/api/players/TestPlayer', playerApiHeaders())
-        ->assertStatus(503);
+        ->assertNotFound();
 });
 
 // ── POST /api/players/{name}/kick ────────────────────────────────────
@@ -100,7 +105,7 @@ it('kicks a player', function () {
     $rcon = Mockery::mock(RconClient::class);
     $rcon->shouldReceive('connect')->once();
     $rcon->shouldReceive('command')
-        ->with('kickuser "Player1" "Breaking rules"')
+        ->with('kickuser "Player1" -r "Breaking rules"')
         ->once()
         ->andReturn('');
     app()->instance(RconClient::class, $rcon);

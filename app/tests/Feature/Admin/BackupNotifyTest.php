@@ -107,16 +107,12 @@ describe('Create backup player notification', function () {
 // ── Rollback with countdown ──────────────────────────────────────────
 
 describe('Rollback with countdown', function () {
-    it('performs immediate rollback when no countdown provided', function () {
+    it('dispatches rollback job when no countdown provided', function () {
+        Queue::fake();
         $backup = Backup::factory()->create();
 
         $backupManager = Mockery::mock(BackupManager::class);
-        $backupManager->shouldReceive('rollback')
-            ->once()
-            ->andReturn([
-                'pre_rollback_backup' => Backup::factory()->create(['type' => BackupType::PreRollback]),
-                'restored_from' => $backup,
-            ]);
+        $backupManager->shouldReceive('validateBackupFile')->once();
         app()->instance(BackupManager::class, $backupManager);
 
         $this->actingAs($this->admin)
@@ -124,14 +120,19 @@ describe('Rollback with countdown', function () {
                 'confirm' => true,
             ])
             ->assertOk()
-            ->assertJson(['message' => 'Rollback completed']);
+            ->assertJson(['message' => 'Rollback initiated — server will restart shortly']);
 
-        expect(AuditLog::where('action', 'backup.rollback')->exists())->toBeTrue();
+        Queue::assertPushed(RollbackGameServer::class);
+        expect(AuditLog::where('action', 'backup.rollback.initiated')->exists())->toBeTrue();
     });
 
     it('schedules rollback with countdown and broadcasts RCON warning', function () {
         Queue::fake();
         $backup = Backup::factory()->create();
+
+        $backupManager = Mockery::mock(BackupManager::class);
+        $backupManager->shouldReceive('validateBackupFile')->once();
+        app()->instance(BackupManager::class, $backupManager);
 
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->once();
@@ -149,7 +150,6 @@ describe('Rollback with countdown', function () {
             ->assertOk()
             ->assertJson([
                 'message' => 'Rollback scheduled in 60 seconds',
-                'countdown' => 60,
             ]);
 
         Queue::assertPushed(RollbackGameServer::class);
@@ -159,6 +159,10 @@ describe('Rollback with countdown', function () {
     it('uses default warning message when none provided', function () {
         Queue::fake();
         $backup = Backup::factory()->create();
+
+        $backupManager = Mockery::mock(BackupManager::class);
+        $backupManager->shouldReceive('validateBackupFile')->once();
+        app()->instance(BackupManager::class, $backupManager);
 
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->once();
@@ -180,6 +184,10 @@ describe('Rollback with countdown', function () {
     it('schedules rollback even when RCON is offline', function () {
         Queue::fake();
         $backup = Backup::factory()->create();
+
+        $backupManager = Mockery::mock(BackupManager::class);
+        $backupManager->shouldReceive('validateBackupFile')->once();
+        app()->instance(BackupManager::class, $backupManager);
 
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));

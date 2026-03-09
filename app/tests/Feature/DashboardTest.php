@@ -22,6 +22,8 @@ function mockDashboardResolver(array $overrides = []): void
         'uptime' => '2 hours',
         'map' => 'Muldraugh, KY',
         'max_players' => 32,
+        'game_version' => null,
+        'steam_branch' => 'public',
         'data_source' => 'rcon',
     ];
 

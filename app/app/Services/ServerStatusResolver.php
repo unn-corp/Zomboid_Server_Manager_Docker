@@ -16,12 +16,13 @@ class ServerStatusResolver
         private readonly DockerManager $docker,
         private readonly OnlinePlayersReader $onlinePlayers,
         private readonly ServerIniParser $iniParser,
+        private readonly GameVersionReader $versionReader,
     ) {}
 
     /**
      * Resolve full server status including container and game state.
      *
-     * @return array{container_status: string, game_status: 'offline'|'starting'|'online', online: bool, player_count: int, players: string[], uptime: string|null, map: string|null, max_players: int|null, data_source: string}
+     * @return array{container_status: string, game_status: 'offline'|'starting'|'online', online: bool, player_count: int, players: string[], uptime: string|null, map: string|null, max_players: int|null, game_version: string|null, steam_branch: string, data_source: string}
      */
     public function resolve(): array
     {
@@ -38,6 +39,8 @@ class ServerStatusResolver
             'uptime' => null,
             'map' => null,
             'max_players' => null,
+            'game_version' => $this->versionReader->getCachedVersion(),
+            'steam_branch' => $this->versionReader->getCurrentBranch(),
             'data_source' => 'none',
         ];
 

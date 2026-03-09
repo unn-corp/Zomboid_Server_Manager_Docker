@@ -7,6 +7,7 @@ use App\Observers\AuditLogObserver;
 use App\Services\AuditLogger;
 use App\Services\DiscordWebhookService;
 use App\Services\DockerManager;
+use App\Services\GameVersionReader;
 use App\Services\RconClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -44,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(DiscordWebhookService::class);
+
+        $this->app->singleton(GameVersionReader::class);
     }
 
     public function boot(): void

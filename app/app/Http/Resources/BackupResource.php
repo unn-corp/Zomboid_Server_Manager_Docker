@@ -19,6 +19,8 @@ class BackupResource extends JsonResource
             'size_bytes' => $this->size_bytes,
             'size_human' => $this->humanFileSize($this->size_bytes),
             'type' => $this->type->value,
+            'game_version' => $this->game_version,
+            'steam_branch' => $this->steam_branch,
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
