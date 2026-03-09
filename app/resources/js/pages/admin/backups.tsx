@@ -88,7 +88,7 @@ export default function Backups({ backups }: { backups: PaginatedBackups }) {
         }
         await fetchAction('/admin/backups', {
             data,
-            successMessage: 'Backup created',
+            successMessage: 'Backup started — it will appear in the list shortly',
         });
         setLoading(false);
         setShowCreate(false);

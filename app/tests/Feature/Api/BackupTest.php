@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\BackupType;
+use App\Jobs\CreateBackupJob;
 use App\Models\AuditLog;
 use App\Models\Backup;
 use App\Services\BackupManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -78,44 +80,25 @@ it('returns empty list when no backups', function () {
 
 // ── POST /api/backups ────────────────────────────────────────────────
 
-it('creates a manual backup', function () {
-    $mockManager = Mockery::mock(BackupManager::class);
-    $backup = Backup::factory()->manual()->create([
-        'filename' => 'backup_manual_2026-02-26_12-00-00.tar.gz',
-        'size_bytes' => 1024 * 1024,
-    ]);
-
-    $mockManager->shouldReceive('createBackup')
-        ->once()
-        ->with(BackupType::Manual, 'Test backup notes')
-        ->andReturn(['backup' => $backup, 'cleanup_count' => 0]);
-
-    app()->instance(BackupManager::class, $mockManager);
+it('dispatches backup job to queue', function () {
+    Queue::fake();
 
     $this->postJson('/api/backups', [
         'notes' => 'Test backup notes',
     ], backupApiHeaders())
-        ->assertCreated()
-        ->assertJsonPath('backup.type', 'manual')
-        ->assertJsonPath('backup.filename', 'backup_manual_2026-02-26_12-00-00.tar.gz')
-        ->assertJsonPath('cleanup_count', 0);
+        ->assertStatus(202)
+        ->assertJsonPath('message', 'Backup started — it will appear in the list shortly');
 
-    expect(AuditLog::where('action', 'backup.create')->exists())->toBeTrue();
+    Queue::assertPushed(CreateBackupJob::class);
 });
 
-it('creates backup without notes', function () {
-    $mockManager = Mockery::mock(BackupManager::class);
-    $backup = Backup::factory()->manual()->create();
-
-    $mockManager->shouldReceive('createBackup')
-        ->once()
-        ->with(BackupType::Manual, null)
-        ->andReturn(['backup' => $backup, 'cleanup_count' => 0]);
-
-    app()->instance(BackupManager::class, $mockManager);
+it('dispatches backup job without notes', function () {
+    Queue::fake();
 
     $this->postJson('/api/backups', [], backupApiHeaders())
-        ->assertCreated();
+        ->assertStatus(202);
+
+    Queue::assertPushed(CreateBackupJob::class);
 });
 
 it('validates notes max length', function () {

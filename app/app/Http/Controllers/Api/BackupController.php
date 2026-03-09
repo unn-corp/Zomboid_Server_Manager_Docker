@@ -7,6 +7,7 @@ use App\Http\Requests\Api\CreateBackupRequest;
 use App\Http\Requests\Api\RollbackRequest;
 use App\Http\Requests\Api\UpdateBackupScheduleRequest;
 use App\Http\Resources\BackupResource;
+use App\Jobs\CreateBackupJob;
 use App\Models\Backup;
 use App\Services\AuditLogger;
 use App\Services\BackupManager;
@@ -35,27 +36,16 @@ class BackupController
 
     public function store(CreateBackupRequest $request): JsonResponse
     {
-        $result = $this->backupManager->createBackup(
+        CreateBackupJob::dispatch(
             BackupType::Manual,
             $request->validated('notes'),
-        );
-
-        $this->auditLogger->log(
-            actor: 'api-key',
-            action: 'backup.create',
-            target: $result['backup']->filename,
-            details: [
-                'type' => BackupType::Manual->value,
-                'size_bytes' => $result['backup']->size_bytes,
-                'notes' => $request->validated('notes'),
-            ],
-            ip: $request->ip(),
+            'api-key',
+            $request->ip(),
         );
 
         return response()->json([
-            'backup' => new BackupResource($result['backup']),
-            'cleanup_count' => $result['cleanup_count'],
-        ], 201);
+            'message' => 'Backup started — it will appear in the list shortly',
+        ], 202);
     }
 
     public function destroy(Backup $backup): JsonResponse

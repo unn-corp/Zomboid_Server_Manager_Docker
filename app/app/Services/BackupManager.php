@@ -128,7 +128,7 @@ class BackupManager
             throw new \RuntimeException("Backup file not found: {$backup->path}");
         }
 
-        $result = Process::run(['tar', '-tzf', $backup->path]);
+        $result = Process::timeout(120)->run(['tar', '-tzf', $backup->path]);
 
         if (! $result->successful()) {
             throw new \RuntimeException("Backup file is corrupted or not a valid tar.gz: {$backup->filename}");
@@ -146,7 +146,7 @@ class BackupManager
     {
         $dataPath = config('zomboid.paths.data');
 
-        $result = Process::run([
+        $result = Process::timeout(300)->run([
             'tar', '-xzf', $backup->path,
             '--overwrite',
             '--no-same-owner',
@@ -224,7 +224,7 @@ class BackupManager
             throw new \RuntimeException("PZ data directory not found: {$dataPath}");
         }
 
-        $result = Process::run([
+        $result = Process::timeout(300)->run([
             'tar', '-czf', $outputPath,
             '-C', $dataPath,
             'Server', 'Saves', 'db',

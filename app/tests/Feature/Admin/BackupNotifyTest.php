@@ -2,6 +2,7 @@
 
 use App\Enums\BackupType;
 use App\Enums\UserRole;
+use App\Jobs\CreateBackupJob;
 use App\Jobs\RollbackGameServer;
 use App\Models\AuditLog;
 use App\Models\Backup;
@@ -32,6 +33,8 @@ beforeEach(function () {
 
 describe('Create backup player notification', function () {
     it('broadcasts RCON message when notify_players is true', function () {
+        Queue::fake();
+
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->once();
         $rcon->shouldReceive('command')
@@ -39,24 +42,19 @@ describe('Create backup player notification', function () {
             ->once();
         app()->instance(RconClient::class, $rcon);
 
-        $backupManager = Mockery::mock(BackupManager::class);
-        $backupManager->shouldReceive('createBackup')
-            ->once()
-            ->andReturn([
-                'backup' => Backup::factory()->create(),
-                'cleanup_count' => 0,
-            ]);
-        app()->instance(BackupManager::class, $backupManager);
-
         $this->actingAs($this->admin)
             ->postJson(route('admin.backups.store'), [
                 'notify_players' => true,
                 'message' => 'Saving the world, hold tight!',
             ])
-            ->assertCreated();
+            ->assertStatus(202);
+
+        Queue::assertPushed(CreateBackupJob::class);
     });
 
     it('uses default message when notify_players is true and no custom message', function () {
+        Queue::fake();
+
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->once();
         $rcon->shouldReceive('command')
@@ -64,62 +62,45 @@ describe('Create backup player notification', function () {
             ->once();
         app()->instance(RconClient::class, $rcon);
 
-        $backupManager = Mockery::mock(BackupManager::class);
-        $backupManager->shouldReceive('createBackup')
-            ->once()
-            ->andReturn([
-                'backup' => Backup::factory()->create(),
-                'cleanup_count' => 0,
-            ]);
-        app()->instance(BackupManager::class, $backupManager);
-
         $this->actingAs($this->admin)
             ->postJson(route('admin.backups.store'), [
                 'notify_players' => true,
             ])
-            ->assertCreated();
+            ->assertStatus(202);
+
+        Queue::assertPushed(CreateBackupJob::class);
     });
 
     it('does not broadcast when notify_players is false', function () {
+        Queue::fake();
+
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldNotReceive('connect');
         app()->instance(RconClient::class, $rcon);
-
-        $backupManager = Mockery::mock(BackupManager::class);
-        $backupManager->shouldReceive('createBackup')
-            ->once()
-            ->andReturn([
-                'backup' => Backup::factory()->create(),
-                'cleanup_count' => 0,
-            ]);
-        app()->instance(BackupManager::class, $backupManager);
 
         $this->actingAs($this->admin)
             ->postJson(route('admin.backups.store'), [
                 'notes' => 'Quick backup',
             ])
-            ->assertCreated();
+            ->assertStatus(202);
+
+        Queue::assertPushed(CreateBackupJob::class);
     });
 
     it('proceeds with backup when RCON is offline', function () {
+        Queue::fake();
+
         $rcon = Mockery::mock(RconClient::class);
         $rcon->shouldReceive('connect')->andThrow(new RuntimeException('Connection refused'));
         app()->instance(RconClient::class, $rcon);
-
-        $backupManager = Mockery::mock(BackupManager::class);
-        $backupManager->shouldReceive('createBackup')
-            ->once()
-            ->andReturn([
-                'backup' => Backup::factory()->create(),
-                'cleanup_count' => 0,
-            ]);
-        app()->instance(BackupManager::class, $backupManager);
 
         $this->actingAs($this->admin)
             ->postJson(route('admin.backups.store'), [
                 'notify_players' => true,
             ])
-            ->assertCreated();
+            ->assertStatus(202);
+
+        Queue::assertPushed(CreateBackupJob::class);
     });
 });
 

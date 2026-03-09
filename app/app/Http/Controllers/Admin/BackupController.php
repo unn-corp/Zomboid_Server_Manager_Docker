@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\BackupType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BackupResource;
+use App\Jobs\CreateBackupJob;
 use App\Jobs\RollbackGameServer;
 use App\Jobs\SendServerWarning;
 use App\Models\Backup;
@@ -57,26 +58,16 @@ class BackupController extends Controller
             }
         }
 
-        $result = $this->backupManager->createBackup(
+        CreateBackupJob::dispatch(
             BackupType::Manual,
             $request->input('notes'),
-        );
-
-        $this->auditLogger->log(
-            actor: $request->user()->name ?? 'admin',
-            action: 'backup.create',
-            target: $result['backup']->filename,
-            details: [
-                'type' => BackupType::Manual->value,
-                'size_bytes' => $result['backup']->size_bytes,
-            ],
-            ip: $request->ip(),
+            $request->user()->name ?? 'admin',
+            $request->ip(),
         );
 
         return response()->json([
-            'backup' => new BackupResource($result['backup']),
-            'cleanup_count' => $result['cleanup_count'],
-        ], 201);
+            'message' => 'Backup started — it will appear in the list shortly',
+        ], 202);
     }
 
     public function destroy(Request $request, Backup $backup): JsonResponse

@@ -20,6 +20,8 @@ class CreateBackupJob implements ShouldQueue
     public function __construct(
         private readonly BackupType $type,
         private readonly ?string $notes = null,
+        private readonly ?string $actor = null,
+        private readonly ?string $ip = null,
     ) {}
 
     public function handle(BackupManager $backupManager): void
@@ -29,21 +31,23 @@ class CreateBackupJob implements ShouldQueue
         $backup = $result['backup'];
 
         AuditLogger::record(
-            actor: 'system',
+            actor: $this->actor ?? 'system',
             action: 'backup.created',
             target: $backup->filename,
             details: [
                 'type' => $this->type->value,
                 'size_bytes' => $backup->size_bytes,
                 'cleanup_count' => $result['cleanup_count'],
-                'source' => 'scheduled_job',
+                'source' => $this->actor ? 'manual' : 'scheduled_job',
             ],
+            ip: $this->ip,
         );
 
-        Log::info('Scheduled backup completed', [
+        Log::info('Backup completed', [
             'filename' => $backup->filename,
             'type' => $this->type->value,
             'size_bytes' => $backup->size_bytes,
+            'actor' => $this->actor ?? 'system',
         ]);
     }
 }
