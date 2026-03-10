@@ -282,25 +282,21 @@ Volumes: pz-data, pz-server-files, pz-backups, pz-lua-bridge, pz-map-tiles, pz-p
 
 ```bash
 git clone <repo-url> && cd Zomboid_Server
-make up
+make init
 ```
 
-On first run this will:
+The interactive setup wizard will:
 
-1. Generate `.env` with random passwords and keys
-2. Build the Docker images
-3. Start all five services
-4. Run database migrations automatically
+1. Ask for environment (production/dev), admin credentials, and server settings
+2. Generate `.env` files with random secrets
+3. Build Docker images and start all services
+4. Run database migrations and create the admin account automatically
 
-### Create Admin Account
-
-```bash
-make exec CMD="php artisan tinker --execute=\"App\Models\User::create(['name'=>'admin','email'=>'admin@example.com','password'=>bcrypt('your-password')])\""
-```
+All prompts have sensible defaults — press Enter through everything for a working setup.
 
 ### Open the Panel
 
-Navigate to **http://localhost:8000** and log in.
+Navigate to the URL shown at the end of setup and log in with the displayed credentials.
 
 ## Configuration
 
@@ -525,7 +521,8 @@ Authenticated via `X-API-Key` header. The key is auto-generated in `.env` during
 
 | Command | Description |
 |---|---|
-| `make up` | Start everything (builds + runs, generates `.env` on first run) |
+| `make init` | Interactive first-run setup wizard (env, admin, start services) |
+| `make up` | Start everything (builds + runs) |
 | `make down` | Stop and remove all containers |
 | `make restart` | Restart all containers |
 | `make stop` | Stop containers without removing them |

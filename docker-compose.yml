@@ -51,6 +51,9 @@ services:
       BACKUP_PATH: /backups
       LUA_BRIDGE_PATH: /lua-bridge
       PZ_MAP_TILES_PATH: /map-tiles
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     networks:
       - zomboid-net
       - backend-net
@@ -89,6 +92,9 @@ services:
       BACKUP_PATH: /backups
       LUA_BRIDGE_PATH: /lua-bridge
       PZ_MAP_TILES_PATH: /map-tiles
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     networks:
       - zomboid-net
       - backend-net

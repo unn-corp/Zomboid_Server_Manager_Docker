@@ -7,84 +7,20 @@ endif
 
 COMPOSE := docker compose -f docker-compose.yml -f $(ARCH_FILE)
 
-.PHONY: up down build restart logs ps stop pull migrate test exec arch init prod-init db-check db-init db-reset db-backup db-restore nuke
+.PHONY: up down build restart logs ps stop pull migrate test exec arch init setup db-check db-init db-reset db-backup db-restore nuke
 
 # ── First-run setup ──────────────────────────────────────────────────
-# Generates .env with random secrets from .env.example template
+# Interactive wizard: configures env, creates DB volume, starts services,
+# and provisions the admin account. Safe to re-run (prompts before overwrite).
 init:
-	@if [ -f .env ]; then \
-		echo ".env already exists — skipping init (delete .env to regenerate)"; \
-	else \
-		echo "Generating .env with random secrets..."; \
-		DB_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24); \
-		RCON_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16); \
-		ADMIN_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16); \
-		API_SECRET=$$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 48); \
-		APP_SECRET=$$(openssl rand -base64 32); \
-		sed \
-			-e "s|^DB_PASSWORD=.*|DB_PASSWORD=$$DB_PASS|" \
-			-e "s|^PZ_RCON_PASSWORD=.*|PZ_RCON_PASSWORD=$$RCON_PASS|" \
-			-e "s|^PZ_ADMIN_PASSWORD=.*|PZ_ADMIN_PASSWORD=$$ADMIN_PASS|" \
-			-e "s|^API_KEY=.*|API_KEY=$$API_SECRET|" \
-			-e "s|^APP_KEY=.*|APP_KEY=base64:$$APP_SECRET|" \
-			.env.example > .env; \
-		echo ""; \
-		echo "  .env created with generated secrets"; \
-		echo "  Edit .env to customize server settings before starting"; \
-		echo ""; \
-	fi
+	@bash scripts/setup.sh
 
-# ── Production setup ─────────────────────────────────────────────────
-# Generates both .env and app/.env from production templates with
-# strong random secrets. Shared values (passwords, keys) stay in sync.
-prod-init:
-	@if [ -f .env ] && [ -f app/.env ]; then \
-		echo "Both .env and app/.env already exist — skipping."; \
-		echo "Delete them to regenerate: rm .env app/.env"; \
-		exit 0; \
-	fi
-	@echo "Generating production .env files with random secrets..."
-	@DB_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24); \
-	RCON_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16); \
-	ADMIN_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16); \
-	API_SECRET=$$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 48); \
-	APP_SECRET=$$(openssl rand -base64 32); \
-	REDIS_PASS=$$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 20); \
-	sed \
-		-e "s|^DB_PASSWORD=.*|DB_PASSWORD=$$DB_PASS|" \
-		-e "s|^PZ_RCON_PASSWORD=.*|PZ_RCON_PASSWORD=$$RCON_PASS|" \
-		-e "s|^PZ_ADMIN_PASSWORD=.*|PZ_ADMIN_PASSWORD=$$ADMIN_PASS|" \
-		-e "s|^API_KEY=.*|API_KEY=$$API_SECRET|" \
-		-e "s|^APP_KEY=.*|APP_KEY=base64:$$APP_SECRET|" \
-		-e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$$REDIS_PASS|" \
-		.env.production.example > .env; \
-	sed \
-		-e "s|^DB_PASSWORD=.*|DB_PASSWORD=$$DB_PASS|" \
-		-e "s|^PZ_RCON_PASSWORD=.*|PZ_RCON_PASSWORD=$$RCON_PASS|" \
-		-e "s|^PZ_ADMIN_PASSWORD=.*|PZ_ADMIN_PASSWORD=$$ADMIN_PASS|" \
-		-e "s|^API_KEY=.*|API_KEY=$$API_SECRET|" \
-		-e "s|^APP_KEY=.*|APP_KEY=base64:$$APP_SECRET|" \
-		-e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$$REDIS_PASS|" \
-		app/.env.production.example > app/.env; \
-	echo ""; \
-	echo "  .env and app/.env created with production secrets"; \
-	echo ""; \
-	echo "  BEFORE STARTING, edit .env and set:"; \
-	echo "    APP_URL=http://<your-server-ip>:8000"; \
-	echo ""; \
-	echo "  Then run: make db-init && make up"; \
-	echo ""
+setup: init
 
 db-check:
 	@docker volume inspect pz-postgres >/dev/null 2>&1 || \
-		(echo ""; \
-		echo "ERROR: Missing Docker volume 'pz-postgres'."; \
-		echo "Refusing to start to avoid silently creating an empty database."; \
-		echo ""; \
-		echo "If this is your first run: make db-init"; \
-		echo "If data was lost and you have backups: make db-restore"; \
-		echo ""; \
-		exit 1)
+		(echo "Creating Postgres volume pz-postgres..."; \
+		docker volume create pz-postgres >/dev/null)
 
 db-init:
 	@docker volume inspect pz-postgres >/dev/null 2>&1 && \
@@ -107,7 +43,7 @@ db-reset:
 	@echo "Postgres volume recreated. Run 'make up' to start with an empty DB."
 
 # ── Core commands ────────────────────────────────────────────────────
-up: init db-check
+up: db-check
 	$(COMPOSE) up -d --build
 
 down:
@@ -166,7 +102,7 @@ db-backup:
 
 db-restore:
 	@LATEST=$$(ls -t db-backups/*.sql 2>/dev/null | head -1); \
-	if [ -z "$$LATEST" ]; then \
+	if [ -z "$${LATEST}" ]; then \
 		echo "No backups found in db-backups/"; \
 	else \
 		echo "Restoring from $$LATEST ..."; \

@@ -88,6 +88,12 @@ if echo "$@" | grep -q "supervisord"; then
         echo "[entrypoint] WARNING: Migrations failed — run 'make migrate' manually."
     }
 
+    # Admin user — create if env vars are set and no super admin exists
+    if [ -n "${ADMIN_USERNAME:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ]; then
+        echo "[entrypoint] Ensuring admin user exists..."
+        php artisan zomboid:create-admin --no-interaction 2>&1 || true
+    fi
+
     # Map tiles — generate in background if missing
     if [ ! -d "${PZ_MAP_TILES_PATH:-/map-tiles}/html/map_data/base/layer0_files" ] && [ -d "${PZ_SERVER_PATH:-/pz-server}" ]; then
         echo "[entrypoint] Map tiles not found — generating in background..."
