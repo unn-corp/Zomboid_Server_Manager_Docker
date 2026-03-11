@@ -3,104 +3,34 @@
 -- writes results to delivery_results.json
 --
 
-local JSON = require("ZM_JSON")
+require("ZM_Utils")
 require("ZM_InventoryExporter")
 
 ZM_DeliveryQueue = {}
 
 local QUEUE_FILE = "delivery_queue.json"
 local RESULTS_FILE = "delivery_results.json"
-
---- Read the delivery queue file
-local function readQueue()
-    local reader = getFileReader(QUEUE_FILE, false)
-    if not reader then
-        return nil
-    end
-
-    local lines = {}
-    local line = reader:readLine()
-    while line ~= nil do
-        table.insert(lines, line)
-        line = reader:readLine()
-    end
-    reader:close()
-
-    local content = table.concat(lines, "")
-    if content == "" then
-        return nil
-    end
-
-    local ok, data = pcall(JSON.decode, content)
-    if not ok then
-        print("[ZomboidManager] ERROR parsing delivery queue: " .. tostring(data))
-        return nil
-    end
-
-    return data
-end
+local MAX_RESULTS = 200
 
 --- Read existing results file
 local function readResults()
-    local reader = getFileReader(RESULTS_FILE, false)
-    if not reader then
-        return {version = 1, updated_at = "", results = {}}
+    local data = ZM_Utils.readJsonFile(RESULTS_FILE)
+    if data then
+        return data
     end
-
-    local lines = {}
-    local line = reader:readLine()
-    while line ~= nil do
-        table.insert(lines, line)
-        line = reader:readLine()
-    end
-    reader:close()
-
-    local content = table.concat(lines, "")
-    if content == "" then
-        return {version = 1, updated_at = "", results = {}}
-    end
-
-    local ok, data = pcall(JSON.decode, content)
-    if not ok then
-        return {version = 1, updated_at = "", results = {}}
-    end
-
-    return data
+    return {version = 1, updated_at = "", results = {}}
 end
 
---- Get ISO 8601 timestamp
-local function getTimestamp()
-    if getGameTime then
-        local gt = getGameTime()
-        return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
-            gt:getYear(), gt:getMonth() + 1, gt:getDay(),
-            gt:getHour(), gt:getMinutes(), 0)
-    end
-    local cal = Calendar.getInstance()
-    return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
-        cal:get(Calendar.YEAR), cal:get(Calendar.MONTH) + 1, cal:get(Calendar.DAY_OF_MONTH),
-        cal:get(Calendar.HOUR_OF_DAY), cal:get(Calendar.MINUTE), cal:get(Calendar.SECOND))
-end
-
---- Write results to file
+--- Write results to file, trimming oldest entries if over cap
 local function writeResults(results)
-    results.updated_at = getTimestamp()
+    results.updated_at = ZM_Utils.getTimestamp()
 
-    local ok, jsonStr = pcall(JSON.encode, results)
-    if not ok then
-        print("[ZomboidManager] ERROR encoding delivery results: " .. tostring(jsonStr))
-        return false
+    -- Cap results list to prevent unbounded growth
+    while results.results and #results.results > MAX_RESULTS do
+        table.remove(results.results, 1)
     end
 
-    local writer = getFileWriter(RESULTS_FILE, true, false)
-    if not writer then
-        print("[ZomboidManager] ERROR: cannot write delivery results")
-        return false
-    end
-
-    writer:write(jsonStr)
-    writer:close()
-    return true
+    ZM_Utils.writeJsonFile(RESULTS_FILE, results)
 end
 
 --- Find online player by username
@@ -165,8 +95,20 @@ end
 
 --- Process all pending entries in the delivery queue
 function ZM_DeliveryQueue.process()
-    local queue = readQueue()
+    local queue = ZM_Utils.readJsonFile(QUEUE_FILE)
     if not queue or not queue.entries then
+        return 0
+    end
+
+    -- Early exit: check if any entries are pending before reading results
+    local hasPending = false
+    for _, entry in ipairs(queue.entries) do
+        if entry.status == "pending" then
+            hasPending = true
+            break
+        end
+    end
+    if not hasPending then
         return 0
     end
 
@@ -187,7 +129,7 @@ function ZM_DeliveryQueue.process()
             local result = {
                 id = entry.id,
                 status = "failed",
-                processed_at = getTimestamp(),
+                processed_at = ZM_Utils.getTimestamp(),
                 message = nil,
             }
 

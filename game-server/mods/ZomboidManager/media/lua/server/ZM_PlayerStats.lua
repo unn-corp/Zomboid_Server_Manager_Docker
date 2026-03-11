@@ -26,22 +26,20 @@ end
 --- Collect all perk levels for a player
 local function getSkills(player)
     local skills = {}
-    local xp = player:getXp()
-    if not xp then
+
+    -- Use player:getPerkLevel() which is the stable PZ API (B42+)
+    local perkList = PerkFactory.PerkList
+    if not perkList then
         return skills
     end
 
-    -- Iterate known PZ perks
-    local perkList = PerkFactory.PerkList
-    if perkList then
-        for i = 0, perkList:size() - 1 do
-            local perk = perkList:get(i)
-            if perk then
+    for i = 0, perkList:size() - 1 do
+        local perk = perkList:get(i)
+        if perk then
+            local ok, level = pcall(player.getPerkLevel, player, perk)
+            if ok and level and level > 0 then
                 local name = perk:getName() or tostring(perk)
-                local level = xp:getLevel(perk)
-                if level and level > 0 then
-                    skills[name] = level
-                end
+                skills[name] = level
             end
         end
     end
@@ -52,12 +50,12 @@ end
 --- Get the player's profession
 local function getProfession(player)
     local desc = player:getDescriptor()
-    if not desc then
+    if not desc or not desc.getProfession then
         return nil
     end
 
-    local prof = desc:getProfession()
-    if prof and prof ~= "" then
+    local ok, prof = pcall(desc.getProfession, desc)
+    if ok and prof and prof ~= "" then
         return prof
     end
 
@@ -76,28 +74,34 @@ function ZM_PlayerStats.exportAll()
     for i = 0, onlinePlayers:size() - 1 do
         local player = onlinePlayers:get(i)
         if player then
-            local username = player:getUsername() or "unknown"
+            local ok, entry = pcall(function()
+                local username = player:getUsername() or "unknown"
 
-            local zombieKills = 0
-            if player.getZombieKills then
-                zombieKills = player:getZombieKills() or 0
+                local zombieKills = 0
+                if player.getZombieKills then
+                    zombieKills = player:getZombieKills() or 0
+                end
+
+                local hoursSurvived = 0
+                if player.getHoursSurvived then
+                    hoursSurvived = math.floor((player:getHoursSurvived() or 0) * 10 + 0.5) / 10
+                end
+
+                return {
+                    username = username,
+                    zombie_kills = zombieKills,
+                    hours_survived = hoursSurvived,
+                    profession = getProfession(player),
+                    skills = getSkills(player),
+                    is_dead = player:isDead() or false,
+                }
+            end)
+
+            if ok and entry then
+                table.insert(playerStats, entry)
+            elseif not ok then
+                print("[ZomboidManager] WARNING: failed to export stats for player index " .. i .. ": " .. tostring(entry))
             end
-
-            local hoursSurvived = 0
-            if player.getHoursSurvived then
-                hoursSurvived = math.floor((player:getHoursSurvived() or 0) * 10 + 0.5) / 10
-            end
-
-            local entry = {
-                username = username,
-                zombie_kills = zombieKills,
-                hours_survived = hoursSurvived,
-                profession = getProfession(player),
-                skills = getSkills(player),
-                is_dead = player:isDead() or false,
-            }
-
-            table.insert(playerStats, entry)
         end
     end
 

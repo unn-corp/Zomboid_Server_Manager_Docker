@@ -39,39 +39,40 @@ local function encode_table(val, stack)
     end
     stack[val] = true
 
-    -- Check if table is array-like or empty (avoid rawget/next which Kahlua lacks)
-    local is_array = false
-    local has_keys = false
-    for k, _ in pairs(val) do
-        has_keys = true
-        if type(k) == "number" then
-            is_array = true
-        end
-        break
-    end
-
-    if is_array or not has_keys then
-        -- Treat as array
-        local n = 0
-        for _ in pairs(val) do
-            n = n + 1
-        end
-        for i = 1, n do
-            table.insert(res, encode(val[i], stack))
+    -- Fast array detection: check if val[1] exists (cheap heuristic for sequential arrays)
+    if val[1] ~= nil then
+        -- Single-pass array encoding
+        local i = 1
+        while val[i] ~= nil do
+            res[i] = encode(val[i], stack)
+            i = i + 1
         end
         stack[val] = nil
         return "[" .. table.concat(res, ",") .. "]"
-    else
-        -- Treat as object
-        for k, v in pairs(val) do
-            if type(k) ~= "string" then
-                error("invalid table: non-string key: " .. tostring(k))
-            end
-            table.insert(res, encode(k, stack) .. ":" .. encode(v, stack))
-        end
-        stack[val] = nil
-        return "{" .. table.concat(res, ",") .. "}"
     end
+
+    -- Check if table is empty or an object
+    local has_keys = false
+    for k, _ in pairs(val) do
+        has_keys = true
+        break
+    end
+
+    if not has_keys then
+        -- Empty table → empty array
+        stack[val] = nil
+        return "[]"
+    end
+
+    -- Treat as object
+    for k, v in pairs(val) do
+        if type(k) ~= "string" then
+            error("invalid table: non-string key: " .. tostring(k))
+        end
+        table.insert(res, encode(k, stack) .. ":" .. encode(v, stack))
+    end
+    stack[val] = nil
+    return "{" .. table.concat(res, ",") .. "}"
 end
 
 local function encode_string(val)

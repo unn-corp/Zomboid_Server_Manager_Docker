@@ -6,7 +6,7 @@
 -- events that do not fire on a PZ dedicated server).
 --
 
-local JSON = require("ZM_JSON")
+require("ZM_Utils")
 
 ZM_RespawnDelay = {}
 
@@ -15,67 +15,33 @@ local DEATHS_FILE = "respawn_deaths.json"
 local RESETS_FILE = "respawn_resets.json"
 local KICKS_FILE = "respawn_kicks.json"
 
+-- Config reload interval (reload every N ticks instead of every tick)
+local configReloadCounter = 0
+local CONFIG_RELOAD_INTERVAL = 10
+
 -- In-memory state
 local config = { enabled = false, delay_minutes = 60 }
 local deathRecords = {} -- { username = epoch_timestamp }
 local deadPlayers = {} -- { username = true } — tracks who we've already recorded as dead
+local deathRecordsDirty = false -- dirty flag for batched writes
 
---- Read a JSON file and return parsed data or nil
-local function readJsonFile(path)
-    local reader = getFileReader(path, false)
-    if not reader then
-        return nil
-    end
-
-    local lines = {}
-    local line = reader:readLine()
-    while line ~= nil do
-        table.insert(lines, line)
-        line = reader:readLine()
-    end
-    reader:close()
-
-    local content = table.concat(lines, "")
-    if content == "" then
-        return nil
-    end
-
-    local ok, data = pcall(JSON.decode, content)
-    if not ok then
-        print("[ZomboidManager] ERROR parsing " .. path .. ": " .. tostring(data))
-        return nil
-    end
-
-    return data
+--- Mark death records as needing a write
+local function markDeathRecordsDirty()
+    deathRecordsDirty = true
 end
 
---- Write data to a JSON file
-local function writeJsonFile(path, data)
-    local ok, jsonStr = pcall(JSON.encode, data)
-    if not ok then
-        print("[ZomboidManager] ERROR encoding " .. path .. ": " .. tostring(jsonStr))
-        return false
+--- Persist death records to disk (only if dirty)
+local function flushDeathRecords()
+    if not deathRecordsDirty then
+        return
     end
-
-    local writer = getFileWriter(path, true, false)
-    if not writer then
-        print("[ZomboidManager] ERROR: cannot write " .. path)
-        return false
-    end
-
-    writer:write(jsonStr)
-    writer:close()
-    return true
-end
-
---- Persist death records to disk
-local function saveDeathRecords()
-    writeJsonFile(DEATHS_FILE, { deaths = deathRecords })
+    ZM_Utils.writeJsonFile(DEATHS_FILE, { deaths = deathRecords })
+    deathRecordsDirty = false
 end
 
 --- Load config from respawn_config.json
 local function loadConfig()
-    local data = readJsonFile(CONFIG_FILE)
+    local data = ZM_Utils.readJsonFile(CONFIG_FILE)
     if data then
         if data.enabled ~= nil then
             config.enabled = data.enabled
@@ -88,7 +54,7 @@ end
 
 --- Process reset requests from Laravel
 local function processResets()
-    local data = readJsonFile(RESETS_FILE)
+    local data = ZM_Utils.readJsonFile(RESETS_FILE)
     if not data or not data.resets then
         return
     end
@@ -103,30 +69,25 @@ local function processResets()
     end
 
     if count > 0 then
-        saveDeathRecords()
+        markDeathRecordsDirty()
         print("[ZomboidManager] RespawnDelay: reset " .. count .. " player timer(s)")
     end
 
     -- Clear the resets file after processing
-    writeJsonFile(RESETS_FILE, { resets = {} })
+    ZM_Utils.writeJsonFile(RESETS_FILE, { resets = {} })
 end
 
 --- Clean up expired death records
 local function cleanExpired()
     local now = os.time()
     local delaySeconds = config.delay_minutes * 60
-    local cleaned = 0
 
     for username, deathTime in pairs(deathRecords) do
         if (now - deathTime) >= delaySeconds then
             deathRecords[username] = nil
             deadPlayers[username] = nil
-            cleaned = cleaned + 1
+            markDeathRecordsDirty()
         end
-    end
-
-    if cleaned > 0 then
-        saveDeathRecords()
     end
 end
 
@@ -134,7 +95,7 @@ end
 --- Laravel reads this file and executes "kickuser" RCON commands.
 local function requestKick(username, remainingMinutes)
     -- Read existing kick queue (may have entries from other players)
-    local data = readJsonFile(KICKS_FILE)
+    local data = ZM_Utils.readJsonFile(KICKS_FILE)
     local kicks = {}
     if data and data.kicks then
         kicks = data.kicks
@@ -153,7 +114,7 @@ local function requestKick(username, remainingMinutes)
         timestamp = os.time(),
     })
 
-    writeJsonFile(KICKS_FILE, { kicks = kicks })
+    ZM_Utils.writeJsonFile(KICKS_FILE, { kicks = kicks })
     print("[ZomboidManager] RespawnDelay: queued kick for " .. username .. " (" .. remainingMinutes .. " min remaining)")
 end
 
@@ -182,7 +143,7 @@ local function scanPlayers()
                     if not deadPlayers[username] then
                         deadPlayers[username] = true
                         deathRecords[username] = now
-                        saveDeathRecords()
+                        markDeathRecordsDirty()
                         print("[ZomboidManager] RespawnDelay: recorded death for " .. username)
                     end
                 else
@@ -199,7 +160,7 @@ local function scanPlayers()
                         else
                             -- Cooldown expired, clean up
                             deathRecords[username] = nil
-                            saveDeathRecords()
+                            markDeathRecordsDirty()
                         end
                     end
                 end
@@ -211,22 +172,30 @@ local function scanPlayers()
     end
 end
 
---- Called every minute: reload config, process resets, scan players, clean expired
+--- Called every minute: reload config periodically, process resets, scan players, clean expired
 function ZM_RespawnDelay.tick()
-    loadConfig()
-    processResets()
+    -- Reload config every CONFIG_RELOAD_INTERVAL ticks instead of every tick
+    configReloadCounter = configReloadCounter + 1
+    if configReloadCounter >= CONFIG_RELOAD_INTERVAL then
+        configReloadCounter = 0
+        loadConfig()
+        processResets() -- check for resets when we reload config (same cadence)
+    end
 
     if config.enabled then
         scanPlayers()
         cleanExpired()
     end
+
+    -- Flush death records once at end of tick (batched writes)
+    flushDeathRecords()
 end
 
 --- Called on server start: load config and persisted death records
 function ZM_RespawnDelay.init()
     loadConfig()
 
-    local data = readJsonFile(DEATHS_FILE)
+    local data = ZM_Utils.readJsonFile(DEATHS_FILE)
     if data and data.deaths then
         deathRecords = data.deaths
         local count = 0

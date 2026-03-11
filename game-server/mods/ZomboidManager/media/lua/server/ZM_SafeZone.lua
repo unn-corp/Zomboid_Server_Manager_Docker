@@ -3,69 +3,26 @@
 -- Uses file-based IPC: reads zone config from Laravel, writes violations for DB import.
 --
 
-local JSON = require("ZM_JSON")
+require("ZM_Utils")
 
 ZM_SafeZone = {}
 
 local CONFIG_FILE = "safezone_config.json"
 local VIOLATIONS_FILE = "safezone_violations.json"
 
+-- Config reload interval (reload every N ticks instead of every tick)
+local configReloadCounter = 0
+local CONFIG_RELOAD_INTERVAL = 10
+
 -- In-memory state
 local config = { enabled = false, zones = {} }
+local configEnabled = false -- upvalue cache for hot path (onWeaponHitCharacter)
 local strikes = {} -- { attackerUsername = count }
 local pendingViolations = {} -- queued for flush to disk
 
---- Read a JSON file and return parsed data or nil
-local function readJsonFile(path)
-    local reader = getFileReader(path, false)
-    if not reader then
-        return nil
-    end
-
-    local lines = {}
-    local line = reader:readLine()
-    while line ~= nil do
-        table.insert(lines, line)
-        line = reader:readLine()
-    end
-    reader:close()
-
-    local content = table.concat(lines, "")
-    if content == "" then
-        return nil
-    end
-
-    local ok, data = pcall(JSON.decode, content)
-    if not ok then
-        print("[ZomboidManager] ERROR parsing " .. path .. ": " .. tostring(data))
-        return nil
-    end
-
-    return data
-end
-
---- Write data to a JSON file
-local function writeJsonFile(path, data)
-    local ok, jsonStr = pcall(JSON.encode, data)
-    if not ok then
-        print("[ZomboidManager] ERROR encoding " .. path .. ": " .. tostring(jsonStr))
-        return false
-    end
-
-    local writer = getFileWriter(path, true, false)
-    if not writer then
-        print("[ZomboidManager] ERROR: cannot write " .. path)
-        return false
-    end
-
-    writer:write(jsonStr)
-    writer:close()
-    return true
-end
-
 --- Load zone config from safezone_config.json
 local function loadConfig()
-    local data = readJsonFile(CONFIG_FILE)
+    local data = ZM_Utils.readJsonFile(CONFIG_FILE)
     if data then
         if data.enabled ~= nil then
             config.enabled = data.enabled
@@ -74,6 +31,8 @@ local function loadConfig()
             config.zones = data.zones
         end
     end
+    -- Update upvalue cache
+    configEnabled = config.enabled
 end
 
 --- Check if coordinates are inside a safe zone, returns zone or nil
@@ -93,7 +52,7 @@ local function flushViolations()
     end
 
     -- Read existing violations from file
-    local existing = readJsonFile(VIOLATIONS_FILE)
+    local existing = ZM_Utils.readJsonFile(VIOLATIONS_FILE)
     local list = {}
     if existing and existing.violations then
         list = existing.violations
@@ -104,15 +63,15 @@ local function flushViolations()
         table.insert(list, v)
     end
 
-    writeJsonFile(VIOLATIONS_FILE, { violations = list })
+    ZM_Utils.writeJsonFile(VIOLATIONS_FILE, { violations = list })
     print("[ZomboidManager] SafeZone: flushed " .. #pendingViolations .. " violation(s) to disk")
     pendingViolations = {}
 end
 
 --- Called when a weapon hits a character
 function ZM_SafeZone.onWeaponHitCharacter(attacker, target, weapon, damage)
-    -- Guard: system must be enabled
-    if not config.enabled then
+    -- Guard: system must be enabled (uses upvalue cache for fast check)
+    if not configEnabled then
         return
     end
 
@@ -188,11 +147,16 @@ function ZM_SafeZone.onWeaponHitCharacter(attacker, target, weapon, damage)
     end
 end
 
---- Called every minute: reload config, flush pending violations
+--- Called every minute: reload config periodically, flush pending violations
 function ZM_SafeZone.tick()
-    loadConfig()
+    -- Reload config every CONFIG_RELOAD_INTERVAL ticks instead of every tick
+    configReloadCounter = configReloadCounter + 1
+    if configReloadCounter >= CONFIG_RELOAD_INTERVAL then
+        configReloadCounter = 0
+        loadConfig()
+    end
 
-    if config.enabled then
+    if configEnabled then
         flushViolations()
     end
 end

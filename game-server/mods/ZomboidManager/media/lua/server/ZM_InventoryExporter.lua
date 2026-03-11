@@ -4,28 +4,15 @@
 --
 
 local JSON = require("ZM_JSON")
+require("ZM_Utils")
 
 ZM_InventoryExporter = {}
 
 local INVENTORY_DIR = "inventory"
 
---- Get ISO 8601 timestamp using PZ's calendar
-local function getTimestamp()
-    if getGameTime then
-        local gt = getGameTime()
-        return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
-            gt:getYear(), gt:getMonth() + 1, gt:getDay(),
-            gt:getHour(), gt:getMinutes(), 0)
-    end
-    -- Fallback if getGameTime not available
-    local cal = Calendar.getInstance()
-    return string.format("%04d-%02d-%02dT%02d:%02d:%02d",
-        cal:get(Calendar.YEAR), cal:get(Calendar.MONTH) + 1, cal:get(Calendar.DAY_OF_MONTH),
-        cal:get(Calendar.HOUR_OF_DAY), cal:get(Calendar.MINUTE), cal:get(Calendar.SECOND))
-end
-
---- Serialize a single inventory item
-local function serializeItem(item, containerName)
+--- Serialize a single inventory item.
+--- primaryItem/secondaryItem are pre-cached equipped item references (avoids instanceof).
+local function serializeItem(item, containerName, primaryItem, secondaryItem)
     local data = {
         full_type = item:getFullType(),
         name = item:getName(),
@@ -44,16 +31,11 @@ local function serializeItem(item, containerName)
         end
     end
 
-    -- Check if item is equipped (primary or secondary hand)
-    if instanceof(item, "HandWeapon") or instanceof(item, "Clothing") then
-        local player = item:getContainer() and item:getContainer():getParent()
-        if player and instanceof(player, "IsoPlayer") then
-            local primary = player:getPrimaryHandItem()
-            local secondary = player:getSecondaryHandItem()
-            if (primary and primary == item) or (secondary and secondary == item) then
-                data.equipped = true
-            end
-        end
+    -- Check if item is equipped via reference equality (no instanceof needed)
+    if primaryItem and item == primaryItem then
+        data.equipped = true
+    elseif secondaryItem and item == secondaryItem then
+        data.equipped = true
     end
 
     return data
@@ -75,6 +57,10 @@ function ZM_InventoryExporter.exportPlayer(player)
         return false
     end
 
+    -- Cache equipped items once per player (avoids instanceof per-item)
+    local primaryItem = player:getPrimaryHandItem()
+    local secondaryItem = player:getSecondaryHandItem()
+
     local items = {}
     local totalWeight = 0
 
@@ -84,7 +70,7 @@ function ZM_InventoryExporter.exportPlayer(player)
         for i = 0, allItems:size() - 1 do
             local item = allItems:get(i)
             if item then
-                table.insert(items, serializeItem(item, "inventory"))
+                table.insert(items, serializeItem(item, "inventory", primaryItem, secondaryItem))
                 totalWeight = totalWeight + (item:getWeight() or 0)
             end
         end
@@ -99,7 +85,7 @@ function ZM_InventoryExporter.exportPlayer(player)
             for i = 0, bagItems:size() - 1 do
                 local item = bagItems:get(i)
                 if item then
-                    table.insert(items, serializeItem(item, bagName))
+                    table.insert(items, serializeItem(item, bagName, primaryItem, secondaryItem))
                     totalWeight = totalWeight + (item:getWeight() or 0)
                 end
             end
@@ -108,7 +94,7 @@ function ZM_InventoryExporter.exportPlayer(player)
 
     local data = {
         username = username,
-        timestamp = getTimestamp(),
+        timestamp = ZM_Utils.getTimestamp(),
         items = items,
         weight = math.floor(totalWeight * 100) / 100,
         max_weight = player:getMaxWeight() or 15.0,

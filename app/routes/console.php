@@ -5,7 +5,7 @@ use App\Jobs\CreateBackupJob;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::job(new CreateBackupJob(BackupType::Scheduled))
-    ->hourly()
+    ->everyFourHours()
     ->when(function () {
         try {
             return cache()->get('backup.schedule.hourly_enabled', true);
@@ -18,9 +18,9 @@ Schedule::command('pz:sync-accounts')->everyFiveMinutes();
 
 Schedule::command('zomboid:sync-player-stats')->everyTenMinutes();
 
-Schedule::command('zomboid:import-pvp-violations')->everyMinute();
+Schedule::command('zomboid:import-pvp-violations')->everyFiveMinutes();
 
-Schedule::command('zomboid:process-respawn-kicks')->everyMinute();
+Schedule::command('zomboid:process-respawn-kicks')->everyFiveMinutes();
 
 Schedule::command('zomboid:parse-game-events')->everyFiveMinutes();
 
