@@ -124,7 +124,8 @@ export type GameEventEntry = {
 export type AutoRestartInfo = {
     enabled: boolean;
     next_restart_at: string | null;
-    interval_hours: number;
+    schedule: string[];
+    timezone: string;
 };
 
 export type ConnectionInfo = {

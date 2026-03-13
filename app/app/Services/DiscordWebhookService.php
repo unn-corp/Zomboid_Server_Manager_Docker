@@ -29,6 +29,7 @@ class DiscordWebhookService
         'server.wipe.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F3}", 'title' => 'Server Wipe Scheduled'],
         'server.wipe.executed' => ['color' => 0xE74C3C, 'emoji' => "\u{1F4A3}", 'title' => 'Server Wipe Started'],
         'server.wipe.completed' => ['color' => 0x2ECC71, 'emoji' => "\u{2705}", 'title' => 'Server Online (Post-Wipe)'],
+        'server.autorestart.upcoming' => ['color' => 0x3498DB, 'emoji' => "\u{1F514}", 'title' => 'Upcoming Restart'],
         'server.autorestart.scheduled' => ['color' => 0xE67E22, 'emoji' => "\u{23F0}", 'title' => 'Auto-Restart Scheduled'],
 
         // Update

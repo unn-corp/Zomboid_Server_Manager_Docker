@@ -25,90 +25,96 @@ class AutoRestartCheck extends Command
             return self::SUCCESS;
         }
 
-        // If next_restart_at not set, schedule it and return
-        if ($settings->next_restart_at === null) {
-            $settings->scheduleNextRestart();
-            Log::info('Auto-restart: scheduled first restart', [
-                'next_restart_at' => $settings->next_restart_at->toIso8601String(),
-            ]);
+        $nextRestart = $settings->getNextRestartTime();
 
+        if ($nextRestart === null) {
             return self::SUCCESS;
         }
 
         // Check if server is online
         $status = $docker->getContainerStatus();
         if (! $status['running']) {
-            // If we've passed the restart time while offline, advance the schedule
-            if (now()->gte($settings->next_restart_at)) {
-                $settings->scheduleNextRestart();
-                Cache::forget('server.auto_restart.pending');
-                Log::info('Auto-restart: server offline, advanced schedule', [
-                    'next_restart_at' => $settings->next_restart_at->toIso8601String(),
-                ]);
-            }
-
             return self::SUCCESS;
         }
 
-        // If a restart is already pending, check if it's overdue (e.g. job failed)
+        // If a restart is already pending, check if it's overdue
         if (Cache::has('server.auto_restart.pending')) {
-            if (now()->gte($settings->next_restart_at->addMinutes(5))) {
-                // Restart is overdue — clear pending and advance schedule
+            if (now()->gte($nextRestart->copy()->addMinutes(5))) {
                 Cache::forget('server.auto_restart.pending');
                 Cache::forget('server.pending_action:restart');
-                $settings->scheduleNextRestart();
-                Log::warning('Auto-restart: pending restart was overdue, advanced schedule');
+                Log::warning('Auto-restart: pending restart was overdue, cleared caches');
             }
 
             return self::SUCCESS;
         }
 
-        $warningSeconds = $settings->warning_minutes * 60;
-        $triggerTime = $settings->next_restart_at->copy()->subSeconds($warningSeconds);
+        $tz = $settings->timezone ?? 'Asia/Tbilisi';
+        $restartInTz = $nextRestart->copy()->setTimezone($tz);
+        $dateKey = $restartInTz->format('Y-m-d');
+        $timeKey = $restartInTz->format('H:i');
 
-        // Not yet time to trigger
-        if (now()->lt($triggerTime)) {
-            return self::SUCCESS;
-        }
+        $secondsUntilRestart = (int) max(0, now()->diffInSeconds($nextRestart, false));
 
-        // Time to initiate the restart pipeline
-        $delaySeconds = (int) max(0, now()->diffInSeconds($settings->next_restart_at, false));
+        // Phase 1: Discord heads-up
+        $discordWindow = $settings->discord_reminder_minutes * 60;
+        $discordCacheKey = "server.auto_restart.discord_reminded:{$dateKey}:{$timeKey}";
 
-        // Set cache flags
-        Cache::put('server.auto_restart.pending', true, $delaySeconds + 300);
-        Cache::put('server.pending_action:restart', true, $delaySeconds + 300);
+        if ($secondsUntilRestart <= $discordWindow && $secondsUntilRestart > 0 && ! Cache::has($discordCacheKey)) {
+            Cache::put($discordCacheKey, true, $secondsUntilRestart + 300);
 
-        // Dispatch the restart job with delay
-        RestartGameServer::dispatch('127.0.0.1')
-            ->delay(now()->addSeconds($delaySeconds));
+            $minutesUntil = (int) ceil($secondsUntilRestart / 60);
 
-        // Dispatch countdown warnings
-        if ($delaySeconds > 0) {
-            $warningMessage = $settings->warning_message ?? 'restart (automatic)';
-            SendServerWarning::dispatchCountdownWarnings(
-                $delaySeconds,
-                $warningMessage,
-                'server.pending_action:restart',
+            AuditLogger::record(
+                actor: 'system',
+                action: 'server.autorestart.upcoming',
+                target: config('zomboid.docker.container_name'),
+                details: [
+                    'restart_time' => $timeKey,
+                    'timezone' => $tz,
+                    'minutes_until' => $minutesUntil,
+                    'message' => "Server restart at {$timeKey} ({$tz}) in {$minutesUntil} minutes",
+                ],
             );
+
+            Log::info("Auto-restart: Discord heads-up sent for {$timeKey} ({$tz}), {$minutesUntil} min away");
         }
 
-        // Audit log
-        AuditLogger::record(
-            actor: 'system',
-            action: 'server.autorestart.scheduled',
-            target: config('zomboid.docker.container_name'),
-            details: [
-                'interval_hours' => $settings->interval_hours,
-                'countdown' => $delaySeconds,
-                'next_restart_at' => $settings->next_restart_at->toIso8601String(),
-            ],
-        );
+        // Phase 2: Restart pipeline (in-game warnings + restart)
+        $warningWindow = $settings->warning_minutes * 60;
+        $triggerCacheKey = "server.auto_restart.triggered:{$dateKey}:{$timeKey}";
 
-        // Schedule the next restart after this one
-        $settings->next_restart_at = $settings->next_restart_at->addHours($settings->interval_hours);
-        $settings->save();
+        if ($secondsUntilRestart <= $warningWindow && ! Cache::has($triggerCacheKey)) {
+            Cache::put($triggerCacheKey, true, $secondsUntilRestart + 300);
+            Cache::put('server.auto_restart.pending', true, $secondsUntilRestart + 300);
+            Cache::put('server.pending_action:restart', true, $secondsUntilRestart + 300);
 
-        $this->info("Auto-restart scheduled in {$delaySeconds} seconds.");
+            // Dispatch the restart job with delay
+            RestartGameServer::dispatch('127.0.0.1')
+                ->delay(now()->addSeconds($secondsUntilRestart));
+
+            // Dispatch countdown warnings
+            if ($secondsUntilRestart > 0) {
+                $warningMessage = $settings->warning_message ?? 'restart (automatic)';
+                SendServerWarning::dispatchCountdownWarnings(
+                    $secondsUntilRestart,
+                    $warningMessage,
+                    'server.pending_action:restart',
+                );
+            }
+
+            AuditLogger::record(
+                actor: 'system',
+                action: 'server.autorestart.scheduled',
+                target: config('zomboid.docker.container_name'),
+                details: [
+                    'restart_time' => $timeKey,
+                    'timezone' => $tz,
+                    'countdown' => $secondsUntilRestart,
+                ],
+            );
+
+            $this->info("Auto-restart scheduled in {$secondsUntilRestart} seconds (slot {$timeKey} {$tz}).");
+        }
 
         return self::SUCCESS;
     }

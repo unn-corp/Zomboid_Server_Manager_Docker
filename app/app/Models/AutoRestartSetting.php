@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,19 +12,18 @@ class AutoRestartSetting extends Model
 
     protected $fillable = [
         'enabled',
-        'interval_hours',
         'warning_minutes',
         'warning_message',
-        'next_restart_at',
+        'timezone',
+        'discord_reminder_minutes',
     ];
 
     protected function casts(): array
     {
         return [
             'enabled' => 'boolean',
-            'interval_hours' => 'integer',
             'warning_minutes' => 'integer',
-            'next_restart_at' => 'datetime',
+            'discord_reminder_minutes' => 'integer',
         ];
     }
 
@@ -34,17 +34,43 @@ class AutoRestartSetting extends Model
     {
         return static::query()->firstOrCreate([], [
             'enabled' => false,
-            'interval_hours' => 6,
             'warning_minutes' => 5,
+            'timezone' => 'Asia/Tbilisi',
+            'discord_reminder_minutes' => 30,
         ]);
     }
 
     /**
-     * Set next_restart_at based on current time + interval_hours.
+     * Compute the next upcoming restart time from scheduled times.
      */
-    public function scheduleNextRestart(): void
+    public function getNextRestartTime(): ?Carbon
     {
-        $this->next_restart_at = now()->addHours($this->interval_hours);
-        $this->save();
+        $times = ScheduledRestartTime::query()
+            ->where('enabled', true)
+            ->orderBy('time')
+            ->pluck('time');
+
+        if ($times->isEmpty()) {
+            return null;
+        }
+
+        $tz = $this->timezone ?? 'Asia/Tbilisi';
+        $nowInTz = now($tz);
+
+        // Find first time today that hasn't passed
+        foreach ($times as $time) {
+            $candidate = Carbon::createFromFormat('H:i', $time, $tz)->setDateFrom($nowInTz);
+            if ($candidate->gt($nowInTz)) {
+                return $candidate->utc();
+            }
+        }
+
+        // All times passed today — return first time tomorrow
+        $firstTime = $times->first();
+
+        return Carbon::createFromFormat('H:i', $firstTime, $tz)
+            ->setDateFrom($nowInTz)
+            ->addDay()
+            ->utc();
     }
 }

@@ -84,6 +84,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         // Auto Restart
         Route::get('auto-restart', [Admin\AutoRestartController::class, 'index'])->name('auto-restart');
         Route::patch('auto-restart', [Admin\AutoRestartController::class, 'update'])->name('auto-restart.update');
+        Route::post('auto-restart/times', [Admin\AutoRestartController::class, 'storeTime'])->name('auto-restart.times.store');
+        Route::delete('auto-restart/times/{time}', [Admin\AutoRestartController::class, 'destroyTime'])->name('auto-restart.times.destroy');
+        Route::post('auto-restart/times/{time}/toggle', [Admin\AutoRestartController::class, 'toggleTime'])->name('auto-restart.times.toggle');
 
         // Respawn Delay
         Route::get('respawn-delay', [Admin\RespawnDelayController::class, 'index'])->name('respawn-delay.index');

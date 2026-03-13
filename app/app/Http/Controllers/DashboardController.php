@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\AutoRestartSetting;
 use App\Models\Backup;
+use App\Models\ScheduledRestartTime;
 use App\Models\GameEvent;
 use App\Models\PlayerStat;
 use App\Models\ServerSetting;
@@ -98,10 +99,17 @@ class DashboardController extends Controller
         $gameState = $resolved['online'] ? $this->gameStateReader->getGameState() : null;
 
         $autoRestart = AutoRestartSetting::instance();
+        $schedule = ScheduledRestartTime::query()
+            ->where('enabled', true)
+            ->orderBy('time')
+            ->pluck('time')
+            ->all();
+
         $autoRestartData = [
             'enabled' => $autoRestart->enabled,
-            'next_restart_at' => $autoRestart->next_restart_at?->toIso8601String(),
-            'interval_hours' => $autoRestart->interval_hours,
+            'next_restart_at' => $autoRestart->getNextRestartTime()?->toIso8601String(),
+            'schedule' => $schedule,
+            'timezone' => $autoRestart->timezone,
         ];
 
         return Inertia::render('dashboard', [

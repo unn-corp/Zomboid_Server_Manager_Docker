@@ -69,6 +69,7 @@ class DiscordWebhookSetting extends Model
             'server.wipe.scheduled' => ['label' => 'Server Wipe Scheduled', 'default' => true, 'group' => 'Server'],
             'server.wipe.executed' => ['label' => 'Server Wipe Executed', 'default' => true, 'group' => 'Server'],
             'server.wipe.completed' => ['label' => 'Server Online (Post-Wipe)', 'default' => true, 'group' => 'Server'],
+            'server.autorestart.upcoming' => ['label' => 'Upcoming Restart Reminder', 'default' => true, 'group' => 'Server'],
             'server.autorestart.scheduled' => ['label' => 'Auto-Restart Scheduled', 'default' => true, 'group' => 'Server'],
 
             // Backup

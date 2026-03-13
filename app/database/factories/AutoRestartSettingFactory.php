@@ -15,10 +15,10 @@ class AutoRestartSettingFactory extends Factory
     {
         return [
             'enabled' => false,
-            'interval_hours' => 6,
             'warning_minutes' => 5,
             'warning_message' => null,
-            'next_restart_at' => null,
+            'timezone' => 'Asia/Tbilisi',
+            'discord_reminder_minutes' => 30,
         ];
     }
 
@@ -26,13 +26,6 @@ class AutoRestartSettingFactory extends Factory
     {
         return $this->state([
             'enabled' => true,
-        ]);
-    }
-
-    public function withNextRestart(?\Carbon\CarbonInterface $at = null): static
-    {
-        return $this->state([
-            'next_restart_at' => $at ?? now()->addHours(6),
         ]);
     }
 }

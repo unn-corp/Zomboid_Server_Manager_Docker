@@ -146,11 +146,23 @@ export default function Dashboard({
                                 )}
                             </Badge>
                         )}
-                        {auto_restart?.enabled && auto_restart.next_restart_at && (
-                            <Badge variant="outline" className="shrink-0 gap-1">
-                                <Timer className="size-3" />
-                                Restart {new Date(auto_restart.next_restart_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </Badge>
+                        {auto_restart?.enabled && auto_restart.schedule?.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                                {auto_restart.schedule.map((time) => {
+                                    const isNext = auto_restart.next_restart_at &&
+                                        new Date(auto_restart.next_restart_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) === time;
+                                    return (
+                                        <Badge
+                                            key={time}
+                                            variant={isNext ? 'default' : 'outline'}
+                                            className="shrink-0 gap-1"
+                                        >
+                                            <Timer className="size-3" />
+                                            {time}
+                                        </Badge>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
