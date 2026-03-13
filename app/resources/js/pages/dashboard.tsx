@@ -10,6 +10,7 @@ import {
     Save,
     ScrollText,
     Square,
+    Timer,
     Trash2,
     Users,
     Zap,
@@ -64,6 +65,7 @@ const COUNTDOWN_OPTIONS = [
 
 export default function Dashboard({
     server,
+    auto_restart,
     game_state,
     recent_audit,
     backup_summary,
@@ -90,7 +92,7 @@ export default function Dashboard({
     const [updateMessage, setUpdateMessage] = useState('');
     const [updateLoading, setUpdateLoading] = useState(false);
 
-    usePoll(5000, { only: ['server', 'game_state'] });
+    usePoll(5000, { only: ['server', 'game_state', 'auto_restart'] });
 
     async function serverAction(action: string) {
         setActionLoading(action);
@@ -220,6 +222,12 @@ export default function Dashboard({
                                 {server.steam_branch && server.steam_branch !== 'public' && (
                                     <span className="ml-1 opacity-70">({server.steam_branch})</span>
                                 )}
+                            </Badge>
+                        )}
+                        {auto_restart?.enabled && auto_restart.next_restart_at && (
+                            <Badge variant="outline" className="shrink-0 gap-1">
+                                <Timer className="size-3" />
+                                Restart {new Date(auto_restart.next_restart_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Badge>
                         )}
                     </div>

@@ -96,8 +96,15 @@ export type GameEventEntry = {
     created_at: string;
 };
 
+export type AutoRestartInfo = {
+    enabled: boolean;
+    next_restart_at: string | null;
+    interval_hours: number;
+};
+
 export type DashboardData = {
     server: ServerStatus;
+    auto_restart: AutoRestartInfo;
     game_state: GameState | null;
     recent_audit: AuditEntry[];
     backup_summary: BackupSummary;

@@ -18,6 +18,8 @@ Schedule::command('pz:sync-accounts')->everyFiveMinutes();
 
 Schedule::command('zomboid:sync-player-stats')->everyTenMinutes();
 
+Schedule::command('zomboid:auto-restart-check')->everyMinute();
+
 Schedule::command('zomboid:import-pvp-violations')->everyFiveMinutes();
 
 Schedule::command('zomboid:process-respawn-kicks')->everyFiveMinutes();

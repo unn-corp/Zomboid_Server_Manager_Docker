@@ -5,6 +5,7 @@ import {
     Bell,
     BookOpen,
     Crosshair,
+    Timer,
     Gamepad2,
     LayoutGrid,
     MapPin,
@@ -77,6 +78,11 @@ const adminNavItems: NavItem[] = [
         title: 'Discord',
         href: '/admin/discord',
         icon: Bell,
+    },
+    {
+        title: 'Auto Restart',
+        href: '/admin/auto-restart',
+        icon: Timer,
     },
     {
         title: 'RCON Console',
