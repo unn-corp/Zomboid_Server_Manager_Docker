@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WhitelistEntry;
+use App\Services\MapConfigBuilder;
 use App\Services\PlayerPositionReader;
 use App\Services\PlayersDbReader;
 use App\Services\RconClient;
@@ -17,6 +18,7 @@ class PortalController extends Controller
         private RconClient $rcon,
         private PlayerPositionReader $positionReader,
         private PlayersDbReader $playersDb,
+        private MapConfigBuilder $mapConfigBuilder,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -44,16 +46,8 @@ class PortalController extends Controller
             }
         }
 
-        $mapConfig = [
-            'tileUrl' => null,
-            'tileSize' => config('zomboid.map.tile_size'),
-            'minZoom' => config('zomboid.map.min_zoom'),
-            'maxZoom' => config('zomboid.map.max_zoom'),
-            'defaultZoom' => 5,
-            'center' => $playerPosition
-                ? ['x' => $playerPosition['x'], 'y' => $playerPosition['y']]
-                : ['x' => config('zomboid.map.center_x'), 'y' => config('zomboid.map.center_y')],
-        ];
+        $mapConfig = $this->mapConfigBuilder->build();
+        $hasTiles = $mapConfig['tileUrl'] !== null;
 
         return Inertia::render('portal', [
             'pzAccount' => [
@@ -66,6 +60,7 @@ class PortalController extends Controller
             'emailVerified' => $user->email_verified_at !== null,
             'playerPosition' => $playerPosition,
             'mapConfig' => $mapConfig,
+            'hasTiles' => $hasTiles,
         ]);
     }
 
