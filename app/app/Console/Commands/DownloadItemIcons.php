@@ -45,6 +45,7 @@ class DownloadItemIcons extends Command
         }
 
         // Filter items that need downloading
+        // Each entry tracks the output filename and the wiki name to try
         $toDownload = [];
         $skipped = 0;
 
@@ -63,7 +64,14 @@ class DownloadItemIcons extends Command
                 continue;
             }
 
-            $toDownload[] = $iconName;
+            // Prefer the texture_icon field (actual Icon= value from PZ scripts)
+            // which maps directly to PZwiki filenames
+            $textureIcon = $item['texture_icon'] ?? null;
+
+            $toDownload[] = [
+                'output_name' => $iconName,
+                'wiki_name' => $textureIcon ?? preg_replace('/^Item_/', '', $iconName),
+            ];
         }
 
         $total = count($catalog['items']);
@@ -81,22 +89,34 @@ class DownloadItemIcons extends Command
 
         $downloaded = 0;
         $failed = 0;
-        $maxRetries = 3;
+
+        // Deduplicate by wiki_name to avoid fetching the same texture twice
+        // Multiple items can share the same Icon (e.g. all Animal_Bowtie* use HatSantaRed)
+        $seen = [];
+        $deduplicated = [];
+        foreach ($toDownload as $entry) {
+            $wikiName = $entry['wiki_name'];
+            if (! isset($seen[$wikiName])) {
+                $seen[$wikiName] = [];
+            }
+            $seen[$wikiName][] = $entry['output_name'];
+            if (count($seen[$wikiName]) === 1) {
+                $deduplicated[] = $entry;
+            }
+        }
 
         // Process in batches
-        $chunks = array_chunk($toDownload, $concurrency);
+        $chunks = array_chunk($deduplicated, $concurrency);
         $chunkIndex = 0;
 
         while ($chunkIndex < count($chunks)) {
             $batch = $chunks[$chunkIndex];
 
             $responses = Http::pool(function (Pool $pool) use ($batch) {
-                foreach ($batch as $iconName) {
-                    // PZwiki uses raw item name (e.g. "Axe.png"), not "Item_Axe.png"
-                    $wikiName = preg_replace('/^Item_/', '', $iconName);
-                    $url = self::PZWIKI_URL.$wikiName.'.png';
+                foreach ($batch as $entry) {
+                    $url = self::PZWIKI_URL.$entry['wiki_name'].'.png';
 
-                    $pool->as($iconName)
+                    $pool->as($entry['wiki_name'])
                         ->timeout(15)
                         ->withOptions(['allow_redirects' => true])
                         ->get($url);
@@ -106,8 +126,9 @@ class DownloadItemIcons extends Command
             $rateLimited = false;
             $retryAfter = 0;
 
-            foreach ($batch as $iconName) {
-                $response = $responses[$iconName];
+            foreach ($batch as $entry) {
+                $wikiName = $entry['wiki_name'];
+                $response = $responses[$wikiName];
 
                 try {
                     if ($response->status() === 429) {
@@ -118,20 +139,21 @@ class DownloadItemIcons extends Command
                     }
 
                     if ($response->successful() && str_starts_with($response->header('Content-Type') ?? '', 'image/')) {
-                        $outputPath = $outputDir.'/'.$iconName.'.png';
-                        if (file_put_contents($outputPath, $response->body()) !== false) {
-                            $downloaded++;
-                        } else {
-                            $failed++;
+                        $imageData = $response->body();
+                        // Save to all output names that share this texture
+                        foreach ($seen[$wikiName] as $outputName) {
+                            $outputPath = $outputDir.'/'.$outputName.'.png';
+                            file_put_contents($outputPath, $imageData);
                         }
+                        $downloaded += count($seen[$wikiName]);
                     } else {
-                        $failed++;
+                        $failed += count($seen[$wikiName]);
                     }
                 } catch (\Throwable $e) {
-                    $failed++;
+                    $failed += count($seen[$wikiName]);
                 }
 
-                $bar->advance();
+                $bar->advance(count($seen[$wikiName]));
             }
 
             if ($rateLimited) {

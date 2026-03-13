@@ -53,11 +53,28 @@ function ZM_ItemCatalog.export()
             if itemName == "" then itemName = "Unknown" end
             local iconName = "Item_" .. itemName
 
+            -- Get the real texture icon name from the script's Icon field
+            -- This is the name PZwiki uses for its file pages (e.g. "Axe", "HatSantaRed")
+            local textureIcon = nil
+            if script.getIcon then
+                local rawIcon = script:getIcon()
+                if rawIcon and rawIcon ~= "" then
+                    textureIcon = tostring(rawIcon)
+                end
+            end
+            if not textureIcon and script.getIconName then
+                local rawIcon = script:getIconName()
+                if rawIcon and rawIcon ~= "" then
+                    textureIcon = tostring(rawIcon)
+                end
+            end
+
             table.insert(items, {
                 full_type = fullType or "",
                 name = name,
                 category = category,
                 icon_name = iconName,
+                texture_icon = textureIcon,
             })
             count = count + 1
         end
