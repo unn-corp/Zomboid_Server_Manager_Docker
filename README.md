@@ -54,6 +54,8 @@ Zomboid Manager wraps a Dockerized Project Zomboid dedicated server with a Larav
 | Authentication | Done | Fortify sessions, Sanctum tokens, API keys, 2FA |
 | User Settings | Done | Profile, password, appearance, two-factor setup |
 | Public Status Page | Done | Live server status, player count, uptime |
+| Item Shop & Wallet | Done | Browse, purchase items/bundles, promo codes, wallet |
+| In-Game Money Deposit | Done | Convert Base.Money/MoneyStack to wallet coins via Lua bridge |
 | Lua Bridge Mod | Done | Server-side enforcement for safe zones + respawn |
 
 ## Features
@@ -200,6 +202,26 @@ Every admin action is recorded with: timestamp, user, action type, IP address, a
 <summary>Screenshot</summary>
 
 ![Discord](docs/screenshots/discord.png)
+</details>
+
+### Item Shop
+
+Browse and purchase in-game items and bundles with a virtual wallet. Categories, search, featured items, promotional codes with percentage/fixed discounts. Purchase history and wallet transaction log. Admin panel for managing items, categories, bundles, promotions, and player wallets.
+
+<details>
+<summary>Screenshot</summary>
+
+![Shop](docs/screenshots/shop.png)
+</details>
+
+### In-Game Money Deposit
+
+Players deposit `Base.Money` (1 coin) and `Base.MoneyStack` (10 coins) looted from zombies into their web wallet. Click "Deposit" on the shop page, the Lua bridge removes money items from inventory within ~15 seconds, and the wallet is credited within 5 minutes.
+
+<details>
+<summary>Screenshot</summary>
+
+![Money Deposit](docs/screenshots/shop-deposit-auth.png)
 </details>
 
 ### Authentication & Security
@@ -428,6 +450,18 @@ make down && make up
 <summary>Server Logs</summary>
 
 ![Server Logs](docs/screenshots/logs.png)
+</details>
+
+<details open>
+<summary>Item Shop</summary>
+
+![Shop](docs/screenshots/shop.png)
+</details>
+
+<details open>
+<summary>In-Game Money Deposit</summary>
+
+![Money Deposit](docs/screenshots/shop-deposit-auth.png)
 </details>
 
 <details open>
