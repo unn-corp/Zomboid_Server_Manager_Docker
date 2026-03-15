@@ -233,6 +233,37 @@ it('player profile renders correct data for existing player', function () {
     );
 });
 
+it('player profile hides recent events from regular players', function () {
+    PlayerStat::query()->create(['username' => 'TestPlayer', 'zombie_kills' => 10, 'hours_survived' => 5]);
+    GameEvent::query()->create(['event_type' => 'connect', 'player' => 'TestPlayer']);
+
+    $user = User::factory()->create(['role' => \App\Enums\UserRole::Player]);
+
+    $response = $this->actingAs($user)->get('/rankings/TestPlayer');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('player-profile')
+        ->where('is_admin', false)
+        ->missing('recent_events')
+    );
+});
+
+it('player profile shows recent events to admin users', function () {
+    PlayerStat::query()->create(['username' => 'TestPlayer', 'zombie_kills' => 10, 'hours_survived' => 5]);
+    GameEvent::query()->create(['event_type' => 'connect', 'player' => 'TestPlayer']);
+
+    $admin = User::factory()->create(['role' => \App\Enums\UserRole::Admin]);
+
+    $response = $this->actingAs($admin)->get('/rankings/TestPlayer');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('player-profile')
+        ->where('is_admin', true)
+    );
+});
+
 it('player profile is accessible by regular players', function () {
     PlayerStat::query()->create(['username' => 'TestPlayer', 'zombie_kills' => 10, 'hours_survived' => 5]);
 

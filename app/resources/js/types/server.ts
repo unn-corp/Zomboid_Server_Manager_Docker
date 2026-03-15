@@ -203,6 +203,7 @@ export type RankingsPageData = {
 export type PlayerProfilePageData = {
     player: PlayerProfile;
     recent_events: GameEventEntry[];
+    is_admin: boolean;
 };
 
 export type WelcomePageData = {

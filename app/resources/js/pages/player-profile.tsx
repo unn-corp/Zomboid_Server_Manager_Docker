@@ -35,7 +35,7 @@ function SkillBar({ name, level }: { name: string; level: number }) {
     );
 }
 
-export default function PlayerProfile({ player, recent_events }: PlayerProfilePageData) {
+export default function PlayerProfile({ player, recent_events, is_admin }: PlayerProfilePageData) {
     // Group skills by category
     const skills = player.skills ?? {};
     const categorizedSkills: { category: string; skills: { name: string; level: number }[] }[] = [];
@@ -199,30 +199,32 @@ export default function PlayerProfile({ player, recent_events }: PlayerProfilePa
                                 </Card>
                             )}
 
-                            {/* Event History */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Recent Events</CardTitle>
-                                    <CardDescription>Last 20 events for this player</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Deferred data="recent_events" fallback={
-                                        <div className="space-y-2">
-                                            {Array.from({ length: 5 }).map((_, i) => (
-                                                <div key={i} className="flex items-start gap-2.5">
-                                                    <Skeleton className="mt-0.5 size-4 shrink-0 rounded" />
-                                                    <div className="flex-1 space-y-1">
-                                                        <Skeleton className="h-4 w-48" />
-                                                        <Skeleton className="h-3 w-16" />
+                            {/* Event History — admin only */}
+                            {is_admin && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Recent Events</CardTitle>
+                                        <CardDescription>Last 20 events for this player</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Deferred data="recent_events" fallback={
+                                            <div className="space-y-2">
+                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                    <div key={i} className="flex items-start gap-2.5">
+                                                        <Skeleton className="mt-0.5 size-4 shrink-0 rounded" />
+                                                        <div className="flex-1 space-y-1">
+                                                            <Skeleton className="h-4 w-48" />
+                                                            <Skeleton className="h-3 w-16" />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    }>
-                                        <ActivityFeed events={recent_events ?? []} />
-                                    </Deferred>
-                                </CardContent>
-                            </Card>
+                                                ))}
+                                            </div>
+                                        }>
+                                            <ActivityFeed events={recent_events ?? []} />
+                                        </Deferred>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </div>
                     </div>
                 </main>

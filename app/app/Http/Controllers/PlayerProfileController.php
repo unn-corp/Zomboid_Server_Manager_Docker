@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GameEvent;
+use App\Enums\UserRole;
 use App\Services\PlayerStatsService;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,9 +23,15 @@ class PlayerProfileController extends Controller
             throw new NotFoundHttpException('Player not found');
         }
 
-        return Inertia::render('player-profile', [
+        $isAdmin = in_array(auth()->user()?->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::Moderator]);
+
+        $props = [
             'player' => $profile,
-            'recent_events' => Inertia::defer(fn () => GameEvent::query()
+            'is_admin' => $isAdmin,
+        ];
+
+        if ($isAdmin) {
+            $props['recent_events'] = Inertia::defer(fn () => GameEvent::query()
                 ->where('player', $username)
                 ->orderByDesc('created_at')
                 ->limit(20)
@@ -38,7 +45,9 @@ class PlayerProfileController extends Controller
                     'game_time' => $event->game_time?->toIso8601String(),
                     'created_at' => $event->created_at?->toIso8601String(),
                 ])
-                ->all()),
-        ]);
+                ->all());
+        }
+
+        return Inertia::render('player-profile', $props);
     }
 }
