@@ -14,7 +14,6 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\RegisterResponse;
-use Laravel\Fortify\Contracts\VerifyEmailResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -51,21 +50,6 @@ class FortifyServiceProvider extends ServiceProvider
             };
         });
 
-        $this->app->singleton(VerifyEmailResponse::class, function () {
-            return new class implements VerifyEmailResponse
-            {
-                public function toResponse($request)
-                {
-                    $user = $request->user();
-
-                    $home = in_array($user->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::Moderator])
-                        ? '/dashboard'
-                        : '/portal';
-
-                    return redirect()->intended($home.'?verified=1');
-                }
-            };
-        });
     }
 
     /**
@@ -116,10 +100,6 @@ class FortifyServiceProvider extends ServiceProvider
         ]));
 
         Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/forgot-password', [
-            'status' => $request->session()->get('status'),
-        ]));
-
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
             'status' => $request->session()->get('status'),
         ]));
 

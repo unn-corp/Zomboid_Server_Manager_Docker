@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\DeliveryQueueManager;
+use App\Services\OnlinePlayersReader;
+use App\Services\RconClient;
 
 beforeEach(function () {
     $this->fixtureDir = dirname(__DIR__).'/fixtures/lua-bridge';
@@ -10,7 +12,17 @@ beforeEach(function () {
     $this->queuePath = $this->tempDir.'/delivery_queue.json';
     $this->resultsPath = $this->tempDir.'/delivery_results.json';
 
-    $this->manager = new DeliveryQueueManager($this->queuePath, $this->resultsPath);
+    // Mock RCON and OnlinePlayers so RCON path is skipped (player not online)
+    $rcon = Mockery::mock(RconClient::class);
+    $onlinePlayers = Mockery::mock(OnlinePlayersReader::class);
+    $onlinePlayers->shouldReceive('getOnlineUsernames')->andReturn([]);
+
+    $this->manager = new DeliveryQueueManager(
+        rcon: $rcon,
+        onlinePlayers: $onlinePlayers,
+        queuePath: $this->queuePath,
+        resultsPath: $this->resultsPath,
+    );
 });
 
 afterEach(function () {

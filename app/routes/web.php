@@ -37,7 +37,7 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -47,6 +47,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::post('players/{name}/kick', [Admin\PlayerController::class, 'kick'])->name('players.kick');
         Route::post('players/{name}/ban', [Admin\PlayerController::class, 'ban'])->name('players.ban');
         Route::post('players/{name}/access', [Admin\PlayerController::class, 'setAccessLevel'])->name('players.access');
+        Route::post('players/{name}/password', [Admin\PlayerController::class, 'setPassword'])->name('players.password');
 
         // Player Inventory
         Route::get('players/{username}/inventory', [Admin\InventoryController::class, 'show'])->name('players.inventory');
@@ -131,6 +132,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         Route::delete('shop/items/{item}', [Admin\ShopController::class, 'destroyItem'])->name('shop.items.destroy');
         Route::post('shop/items/{item}/toggle', [Admin\ShopController::class, 'toggleItem'])->name('shop.items.toggle');
 
+        // Shop Purchases (admin)
+        Route::get('shop/purchases', [Admin\ShopPurchaseController::class, 'index'])->name('shop.purchases');
+
         // Shop Bundles
         Route::get('shop/bundles', [Admin\ShopBundleController::class, 'index'])->name('shop.bundles');
         Route::post('shop/bundles', [Admin\ShopBundleController::class, 'store'])->name('shop.bundles.store');
@@ -147,6 +151,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         // Wallets
         Route::get('wallets', [Admin\WalletController::class, 'index'])->name('wallets');
         Route::post('wallets/{user}/credit', [Admin\WalletController::class, 'credit'])->name('wallets.credit');
+        Route::post('wallets/{user}/reset', [Admin\WalletController::class, 'resetBalance'])->name('wallets.reset');
         Route::get('wallets/{user}/transactions', [Admin\WalletController::class, 'transactions'])->name('wallets.transactions');
 
         // Server Settings (connection info)

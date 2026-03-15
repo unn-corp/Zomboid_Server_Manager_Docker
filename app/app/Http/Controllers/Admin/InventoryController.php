@@ -34,6 +34,9 @@ class InventoryController extends Controller
     {
         $this->validateUsername($username);
 
+        // Request fresh export from Lua mod (picked up within ~2.5s)
+        $this->inventoryReader->requestExport($username);
+
         $inventory = $this->inventoryReader->getPlayerInventory($username);
 
         // Resolve icon paths for inventory items

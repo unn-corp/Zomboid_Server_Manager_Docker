@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DeliveryQueueManager
@@ -10,24 +11,35 @@ class DeliveryQueueManager
 
     private string $resultsPath;
 
-    public function __construct(?string $queuePath = null, ?string $resultsPath = null)
-    {
+    public function __construct(
+        private readonly RconClient $rcon,
+        private readonly OnlinePlayersReader $onlinePlayers,
+        private readonly InventoryReader $inventoryReader,
+        ?string $queuePath = null,
+        ?string $resultsPath = null,
+    ) {
         $this->queuePath = $queuePath ?? config('zomboid.lua_bridge.delivery_queue');
         $this->resultsPath = $resultsPath ?? config('zomboid.lua_bridge.delivery_results');
     }
 
     /**
-     * Add a "give" entry to the delivery queue.
+     * Give item to player. Tries RCON for instant delivery if the player is online,
+     * falls back to the Lua delivery queue otherwise.
      *
      * @return array{id: string, action: string, username: string, item_type: string, count: int, status: string, created_at: string}
      */
     public function giveItem(string $username, string $itemType, int $count = 1): array
     {
+        if ($this->tryRconAddItem($username, $itemType, $count)) {
+            return $this->makeEntry('give', $username, $itemType, $count, 'delivered');
+        }
+
         return $this->addEntry('give', $username, $itemType, $count);
     }
 
     /**
-     * Add a "remove" entry to the delivery queue.
+     * Remove items via Lua delivery queue.
+     * PZ RCON removeitem is self-only (no player targeting), so removal always goes through Lua.
      *
      * @return array{id: string, action: string, username: string, item_type: string, count: int, status: string, created_at: string}
      */
@@ -78,6 +90,59 @@ class DeliveryQueueManager
             'updated_at' => date('c'),
             'results' => [],
         ]);
+    }
+
+    /**
+     * Check if the player is currently online.
+     */
+    private function isPlayerOnline(string $username): bool
+    {
+        try {
+            return in_array($username, $this->onlinePlayers->getOnlineUsernames(), true);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Try to give items via RCON additem command (instant delivery for online players).
+     */
+    private function tryRconAddItem(string $username, string $itemType, int $count): bool
+    {
+        if (! $this->isPlayerOnline($username)) {
+            return false;
+        }
+
+        try {
+            $this->rcon->connect();
+            $this->rcon->command("additem \"{$username}\" \"{$itemType}\" {$count}");
+            Log::info("[DeliveryQueue] RCON additem: {$count}x {$itemType} to {$username}");
+
+            // Request inventory re-export so web sees the change
+            $this->inventoryReader->requestExport($username);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::debug("[DeliveryQueue] RCON additem failed, falling back to queue: {$e->getMessage()}");
+
+            return false;
+        }
+    }
+
+    /**
+     * Build an entry array without writing to the queue file.
+     */
+    private function makeEntry(string $action, string $username, string $itemType, int $count, string $status): array
+    {
+        return [
+            'id' => Str::uuid()->toString(),
+            'action' => $action,
+            'username' => $username,
+            'item_type' => $itemType,
+            'count' => $count,
+            'status' => $status,
+            'created_at' => date('c'),
+        ];
     }
 
     /**

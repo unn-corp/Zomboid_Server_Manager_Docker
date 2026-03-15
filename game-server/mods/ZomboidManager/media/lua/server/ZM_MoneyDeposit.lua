@@ -47,61 +47,99 @@ local function findPlayer(username)
     return nil
 end
 
---- Count and remove all Money/MoneyStack items from a player's inventory.
---- Two-pass: collect all refs first, then remove.
---- Returns money_count, stack_count
-local function countAndRemoveMoney(player)
-    local moneyItems = {}
-    local stackItems = {}
-
-    -- Collect from main inventory
-    local inventory = player:getInventory()
-    if inventory then
-        local allItems = inventory:getItems()
-        if allItems then
-            for i = 0, allItems:size() - 1 do
-                local item = allItems:get(i)
-                if item then
-                    local fullType = item:getFullType()
-                    if fullType == "Base.Money" then
-                        table.insert(moneyItems, {item = item, container = inventory})
-                    elseif fullType == "Base.MoneyStack" then
-                        table.insert(stackItems, {item = item, container = inventory})
-                    end
-                end
+--- Count money items in a container (without removing)
+local function countMoneyInContainer(container)
+    local money = 0
+    local stacks = 0
+    if not container then
+        return money, stacks
+    end
+    local allItems = container:getItems()
+    if not allItems then
+        return money, stacks
+    end
+    for i = 0, allItems:size() - 1 do
+        local item = allItems:get(i)
+        if item then
+            local fullType = item:getFullType()
+            if fullType == "Base.Money" then
+                money = money + 1
+            elseif fullType == "Base.MoneyStack" then
+                stacks = stacks + 1
             end
         end
     end
+    return money, stacks
+end
 
-    -- Collect from backpack
+--- Count total money items across all player containers
+local function countAllMoney(player)
+    local totalMoney = 0
+    local totalStacks = 0
+
+    local inventory = player:getInventory()
+    local m, s = countMoneyInContainer(inventory)
+    totalMoney = totalMoney + m
+    totalStacks = totalStacks + s
+
+    local backpack = player:getClothingItem_Back()
+    if backpack and backpack:getItemContainer() then
+        m, s = countMoneyInContainer(backpack:getItemContainer())
+        totalMoney = totalMoney + m
+        totalStacks = totalStacks + s
+    end
+
+    return totalMoney, totalStacks
+end
+
+--- Remove all items of a given type from a container using getFirstType loop.
+--- Returns number actually removed.
+local function removeAllOfType(container, fullType)
+    if not container then
+        return 0
+    end
+    local removed = 0
+    -- Use getFirstType in a loop — each call finds the next instance
+    -- This avoids index-shifting issues entirely
+    while true do
+        local item = container:getFirstType(fullType)
+        if not item then
+            break
+        end
+        -- DoRemoveItem is the reliable server-side removal method
+        if container.DoRemoveItem then
+            container:DoRemoveItem(item)
+        else
+            container:Remove(item)
+        end
+        removed = removed + 1
+        -- Safety: prevent infinite loop if removal isn't working
+        if removed > 10000 then
+            print("[ZomboidManager] WARNING: hit safety limit removing " .. fullType)
+            break
+        end
+    end
+    return removed
+end
+
+--- Remove all Money and MoneyStack items from a player.
+--- Returns money_removed, stacks_removed
+local function removeMoney(player)
+    local moneyRemoved = 0
+    local stacksRemoved = 0
+
+    local inventory = player:getInventory()
+    moneyRemoved = moneyRemoved + removeAllOfType(inventory, "Base.Money")
+    stacksRemoved = stacksRemoved + removeAllOfType(inventory, "Base.MoneyStack")
+
     local backpack = player:getClothingItem_Back()
     if backpack and backpack:getItemContainer() then
         local bagContainer = backpack:getItemContainer()
-        local bagItems = bagContainer:getItems()
-        if bagItems then
-            for i = 0, bagItems:size() - 1 do
-                local item = bagItems:get(i)
-                if item then
-                    local fullType = item:getFullType()
-                    if fullType == "Base.Money" then
-                        table.insert(moneyItems, {item = item, container = bagContainer})
-                    elseif fullType == "Base.MoneyStack" then
-                        table.insert(stackItems, {item = item, container = bagContainer})
-                    end
-                end
-            end
-        end
+        moneyRemoved = moneyRemoved + removeAllOfType(bagContainer, "Base.Money")
+        stacksRemoved = stacksRemoved + removeAllOfType(bagContainer, "Base.MoneyStack")
     end
 
-    -- Remove collected items
-    for _, entry in ipairs(moneyItems) do
-        entry.container:removeItemOnServer(entry.item)
-    end
-    for _, entry in ipairs(stackItems) do
-        entry.container:removeItemOnServer(entry.item)
-    end
-
-    return #moneyItems, #stackItems
+    return moneyRemoved, stacksRemoved
 end
 
 --- Process all pending deposit requests
@@ -151,20 +189,36 @@ function ZM_MoneyDeposit.process()
             if not player then
                 result.message = "player not online"
             else
-                local moneyCount, stackCount = countAndRemoveMoney(player)
-                if moneyCount == 0 and stackCount == 0 then
+                -- Step 1: Count money BEFORE removal
+                local moneyBefore, stacksBefore = countAllMoney(player)
+
+                if moneyBefore == 0 and stacksBefore == 0 then
                     result.message = "no money items found"
                 else
-                    local moneyValue = 1
-                    local stackValue = 10
-                    local totalCoins = (moneyCount * moneyValue) + (stackCount * stackValue)
+                    -- Step 2: Remove all money items
+                    local moneyRemoved, stacksRemoved = removeMoney(player)
 
-                    result.status = "success"
-                    result.money_count = moneyCount
-                    result.stack_count = stackCount
-                    result.total_coins = totalCoins
+                    -- Step 3: Verify removal — count money AFTER removal
+                    local moneyAfter, stacksAfter = countAllMoney(player)
 
-                    print("[ZomboidManager] Money deposit: " .. req.username .. " deposited " .. moneyCount .. " Money + " .. stackCount .. " MoneyStack = " .. totalCoins .. " coins")
+                    if moneyAfter > 0 or stacksAfter > 0 then
+                        -- Some items were NOT removed — report failure
+                        -- Do NOT credit coins since items are still in inventory
+                        result.message = "removal failed: " .. moneyAfter .. " Money and " .. stacksAfter .. " MoneyStack still in inventory"
+                        print("[ZomboidManager] WARNING: Money deposit removal incomplete for " .. req.username .. " — " .. moneyAfter .. " Money + " .. stacksAfter .. " MoneyStack remaining")
+                    else
+                        -- All items successfully removed — report success
+                        local moneyValue = 1
+                        local stackValue = 10
+                        local totalCoins = (moneyRemoved * moneyValue) + (stacksRemoved * stackValue)
+
+                        result.status = "success"
+                        result.money_count = moneyRemoved
+                        result.stack_count = stacksRemoved
+                        result.total_coins = totalCoins
+
+                        print("[ZomboidManager] Money deposit: " .. req.username .. " deposited " .. moneyRemoved .. " Money + " .. stacksRemoved .. " MoneyStack = " .. totalCoins .. " coins")
+                    end
 
                     -- Re-export inventory so the web reflects the change immediately
                     ZM_InventoryExporter.exportPlayer(player)

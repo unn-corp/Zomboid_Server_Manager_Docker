@@ -1,5 +1,5 @@
 import { Head, Link, usePoll } from '@inertiajs/react';
-import { Backpack, Ban, Circle, Clock, Search, ShieldCheck, Skull, TimerReset, UserX } from 'lucide-react';
+import { Backpack, Ban, Circle, Clock, KeyRound, Search, ShieldCheck, Skull, TimerReset, UserX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import PlayerActionDialogs from '@/components/player-action-dialogs';
 import { SortIcon } from '@/components/sort-icon';
@@ -74,6 +74,7 @@ export default function Players({ players, respawn_cooldowns = {}, respawn_confi
     const [banTarget, setBanTarget] = useState<string | null>(null);
     const [accessTarget, setAccessTarget] = useState<string | null>(null);
     const [resetTimerTarget, setResetTimerTarget] = useState<string | null>(null);
+    const [passwordTarget, setPasswordTarget] = useState<string | null>(null);
 
     usePoll(5000, { only: ['players'] });
 
@@ -256,6 +257,16 @@ export default function Players({ players, respawn_cooldowns = {}, respawn_confi
                                                     >
                                                         <ShieldCheck className="size-3.5" />
                                                     </Button>
+                                                    {player.id !== null && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setPasswordTarget(player.username)}
+                                                            title="Set password"
+                                                        >
+                                                            <KeyRound className="size-3.5" />
+                                                        </Button>
+                                                    )}
                                                     {respawn_cooldowns[player.username] && (
                                                         <Button
                                                             variant="ghost"
@@ -307,10 +318,12 @@ export default function Players({ players, respawn_cooldowns = {}, respawn_confi
                 kickTarget={kickTarget}
                 banTarget={banTarget}
                 accessTarget={accessTarget}
+                passwordTarget={passwordTarget}
                 resetTimerTarget={resetTimerTarget}
                 onCloseKick={() => setKickTarget(null)}
                 onCloseBan={() => setBanTarget(null)}
                 onCloseAccess={() => setAccessTarget(null)}
+                onClosePassword={() => setPasswordTarget(null)}
                 onCloseResetTimer={() => setResetTimerTarget(null)}
                 reloadOnly={['players', 'respawn_cooldowns']}
             />

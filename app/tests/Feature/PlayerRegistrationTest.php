@@ -3,12 +3,9 @@
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\WhitelistEntry;
-use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -440,13 +437,13 @@ describe('PZ account sync command', function () {
     });
 });
 
-describe('Email verification enforcement', function () {
-    it('blocks unverified admin from dashboard', function () {
+describe('Access without email verification', function () {
+    it('allows unverified admin to access dashboard', function () {
         $user = User::factory()->unverified()->admin()->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))
-            ->assertRedirect(route('verification.notice'));
+            ->assertOk();
     });
 
     it('allows verified admin to access dashboard', function () {
@@ -471,44 +468,6 @@ describe('Email verification enforcement', function () {
         $this->actingAs($user)
             ->get(route('portal'))
             ->assertOk();
-    });
-
-    it('redirects player to portal after email verification', function () {
-        $user = User::factory()->unverified()->create();
-
-        Event::fake();
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)],
-        );
-
-        $this->actingAs($user)
-            ->get($verificationUrl)
-            ->assertRedirect('/portal?verified=1');
-
-        Event::assertDispatched(Verified::class);
-        expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    });
-
-    it('redirects admin to dashboard after email verification', function () {
-        $user = User::factory()->unverified()->admin()->create();
-
-        Event::fake();
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)],
-        );
-
-        $this->actingAs($user)
-            ->get($verificationUrl)
-            ->assertRedirect('/dashboard?verified=1');
-
-        Event::assertDispatched(Verified::class);
-        expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     });
 });
 

@@ -118,6 +118,48 @@ function ZM_InventoryExporter.exportPlayer(player)
     return true
 end
 
+local EXPORT_REQUESTS_FILE = "export_requests.json"
+
+--- Process on-demand export requests written by PHP.
+--- Reads export_requests.json, exports requested players, then clears the file.
+function ZM_InventoryExporter.processExportRequests()
+    local data = ZM_Utils.readJsonFile(EXPORT_REQUESTS_FILE)
+    if not data or not data.usernames or #data.usernames == 0 then
+        return 0
+    end
+
+    local players = getOnlinePlayers()
+    if not players then
+        return 0
+    end
+
+    -- Build lookup of online players by username
+    local onlineByName = {}
+    for i = 0, players:size() - 1 do
+        local p = players:get(i)
+        if p then
+            onlineByName[p:getUsername()] = p
+        end
+    end
+
+    local count = 0
+    for _, username in ipairs(data.usernames) do
+        local player = onlineByName[username]
+        if player and ZM_InventoryExporter.exportPlayer(player) then
+            count = count + 1
+        end
+    end
+
+    -- Clear the request file
+    ZM_Utils.writeJsonFile(EXPORT_REQUESTS_FILE, {usernames = {}, updated_at = ZM_Utils.getTimestamp()})
+
+    if count > 0 then
+        print("[ZomboidManager] On-demand inventory export: " .. count .. " player(s)")
+    end
+
+    return count
+end
+
 --- Export all online players' inventories
 function ZM_InventoryExporter.exportAll()
     local players = getOnlinePlayers()

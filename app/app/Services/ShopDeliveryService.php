@@ -40,16 +40,30 @@ class ShopDeliveryService
 
             $entry = $this->deliveryQueue->giveItem($pzUsername, $delivery->item_type, $delivery->quantity);
 
-            $delivery->update([
-                'username' => $pzUsername,
-                'delivery_queue_id' => $entry['id'],
-                'status' => DeliveryStatus::Queued,
-                'attempts' => $delivery->attempts + 1,
-                'last_attempt_at' => now(),
-            ]);
+            if ($entry['status'] === 'delivered') {
+                $delivery->update([
+                    'username' => $pzUsername,
+                    'status' => DeliveryStatus::Delivered,
+                    'delivered_at' => now(),
+                    'attempts' => $delivery->attempts + 1,
+                    'last_attempt_at' => now(),
+                ]);
+            } else {
+                $delivery->update([
+                    'username' => $pzUsername,
+                    'delivery_queue_id' => $entry['id'],
+                    'status' => DeliveryStatus::Queued,
+                    'attempts' => $delivery->attempts + 1,
+                    'last_attempt_at' => now(),
+                ]);
+            }
         }
 
-        $purchase->update(['delivery_status' => DeliveryStatus::Queued]);
+        $this->updatePurchaseStatuses();
+        $purchase->refresh();
+        if ($purchase->delivery_status === DeliveryStatus::Pending) {
+            $purchase->update(['delivery_status' => DeliveryStatus::Queued]);
+        }
     }
 
     /**
@@ -126,14 +140,25 @@ class ShopDeliveryService
                 $delivery->quantity,
             );
 
-            $delivery->update([
-                'username' => $whitelistEntry->pz_username,
-                'delivery_queue_id' => $entry['id'],
-                'status' => DeliveryStatus::Queued,
-                'attempts' => $delivery->attempts + 1,
-                'last_attempt_at' => now(),
-                'error_message' => null,
-            ]);
+            if ($entry['status'] === 'delivered') {
+                $delivery->update([
+                    'username' => $whitelistEntry->pz_username,
+                    'status' => DeliveryStatus::Delivered,
+                    'delivered_at' => now(),
+                    'attempts' => $delivery->attempts + 1,
+                    'last_attempt_at' => now(),
+                    'error_message' => null,
+                ]);
+            } else {
+                $delivery->update([
+                    'username' => $whitelistEntry->pz_username,
+                    'delivery_queue_id' => $entry['id'],
+                    'status' => DeliveryStatus::Queued,
+                    'attempts' => $delivery->attempts + 1,
+                    'last_attempt_at' => now(),
+                    'error_message' => null,
+                ]);
+            }
 
             $retried++;
         }

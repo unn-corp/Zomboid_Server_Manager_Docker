@@ -3,8 +3,10 @@ import {
     Backpack,
     ChevronDown,
     Circle,
+    Loader2,
     Package,
     Plus,
+    RefreshCw,
     Search,
     Swords,
     Trash2,
@@ -210,9 +212,15 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                         <h1 className="text-2xl font-bold tracking-tight">
                             Inventory: {username}
                         </h1>
-                        {inventory && (
-                            <p className="text-muted-foreground text-sm">
+                        {inventory ? (
+                            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
                                 Last updated {formatRelativeTime(inventory.timestamp)}
+                                <RefreshCw className="size-3 animate-spin" />
+                            </p>
+                        ) : (
+                            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                                Waiting for data...
+                                <RefreshCw className="size-3 animate-spin" />
                             </p>
                         )}
                     </div>
@@ -234,13 +242,15 @@ export default function PlayerInventory({ username, inventory, catalog, deliveri
                 {!inventory ? (
                     <Card>
                         <CardContent className="py-12">
-                            <p className="text-muted-foreground text-center">
-                                No inventory snapshot available for this player.
-                                <br />
-                                <span className="text-sm">
-                                    The player needs to log in while the Lua bridge mod is running.
-                                </span>
-                            </p>
+                            <div className="flex flex-col items-center gap-3 text-center">
+                                <Loader2 className="text-muted-foreground size-8 animate-spin" />
+                                <div>
+                                    <p className="font-medium">Requesting inventory data...</p>
+                                    <p className="text-muted-foreground text-sm">
+                                        The player may need to be online for inventory to appear.
+                                    </p>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 ) : (

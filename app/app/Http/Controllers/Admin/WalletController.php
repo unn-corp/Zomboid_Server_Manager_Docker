@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -74,6 +75,33 @@ class WalletController extends Controller
         return response()->json([
             'message' => "Awarded {$validated['amount']} to {$user->username}",
             'balance' => (float) $wallet->fresh()->balance,
+        ]);
+    }
+
+    /**
+     * Reset a user's wallet balance to zero.
+     */
+    public function resetBalance(Request $request, User $user): JsonResponse
+    {
+        $wallet = $this->walletService->getOrCreateWallet($user);
+        $previousBalance = (float) $wallet->balance;
+
+        $this->walletService->resetBalance($wallet, "Reset by {$request->user()->name}");
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'shop.currency.reset',
+            target: $user->username,
+            details: [
+                'previous_balance' => $previousBalance,
+                'new_balance' => 0,
+            ],
+            ip: $request->ip(),
+        );
+
+        return response()->json([
+            'message' => "{$user->username}'s balance has been reset to 0",
+            'balance' => 0,
         ]);
     }
 

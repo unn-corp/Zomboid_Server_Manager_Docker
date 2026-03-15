@@ -10,4 +10,5 @@ enum TransactionSource: string
     case System = 'system';
     case Payment = 'payment';
     case InGameDeposit = 'in_game_deposit';
+    case AdminReset = 'admin_reset';
 }

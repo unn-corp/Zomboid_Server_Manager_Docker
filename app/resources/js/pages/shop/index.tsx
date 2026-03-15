@@ -85,7 +85,7 @@ function PromoRibbon({ promotions }: { promotions: ActivePromotion[] }) {
     );
 }
 
-export default function ShopIndex({ categories, items, bundles, balance, activePromotions, hasPzAccount, pendingDeposit: initialPendingDeposit, lastDepositResult: initialLastDepositResult }: Props) {
+export default function ShopIndex({ categories, items, bundles, balance: initialBalance, activePromotions, hasPzAccount, pendingDeposit: initialPendingDeposit, lastDepositResult: initialLastDepositResult }: Props) {
     const { auth } = usePage().props;
     const isAuthenticated = !!auth.user;
     const [filter, setFilter] = useState('');
@@ -100,6 +100,7 @@ export default function ShopIndex({ categories, items, bundles, balance, activeP
     const [lastDepositResult, setLastDepositResult] = useState(initialLastDepositResult);
     const [depositCooldown, setDepositCooldown] = useState(0);
     const [depositError, setDepositError] = useState<string | null>(null);
+    const [balance, setBalance] = useState(initialBalance);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -107,7 +108,8 @@ export default function ShopIndex({ categories, items, bundles, balance, activeP
     useEffect(() => {
         setPendingDeposit(initialPendingDeposit);
         setLastDepositResult(initialLastDepositResult);
-    }, [initialPendingDeposit, initialLastDepositResult]);
+        setBalance(initialBalance);
+    }, [initialPendingDeposit, initialLastDepositResult, initialBalance]);
 
     // Auto-dismiss deposit result after 8 seconds
     useEffect(() => {
@@ -133,6 +135,9 @@ export default function ShopIndex({ categories, items, bundles, balance, activeP
             const data = await res.json();
             setPendingDeposit(data.pendingDeposit);
             setLastDepositResult(data.lastDepositResult);
+            if (data.balance !== undefined && data.balance !== null) {
+                setBalance(data.balance);
+            }
         } catch {
             // Silently ignore polling errors
         }
@@ -315,7 +320,7 @@ export default function ShopIndex({ categories, items, bundles, balance, activeP
                                     <li>1. Make sure you are online in-game</li>
                                     <li>2. Click "Deposit" below</li>
                                     <li>3. Within ~15 seconds, all Money and MoneyStack items are removed from your inventory</li>
-                                    <li>4. Your wallet is credited within 5 minutes</li>
+                                    <li>4. Your wallet is credited automatically</li>
                                 </ol>
                                 <div className="flex gap-3 pt-1">
                                     <Badge variant="outline" className="text-xs">

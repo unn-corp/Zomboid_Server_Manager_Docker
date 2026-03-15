@@ -68,6 +68,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
     const [itemType, setItemType] = useState('');
     const [itemQuantity, setItemQuantity] = useState(1);
     const [itemPrice, setItemPrice] = useState('');
+    const [itemWeight, setItemWeight] = useState('');
     const [itemCategoryId, setItemCategoryId] = useState('');
     const [itemMaxPerPlayer, setItemMaxPerPlayer] = useState('');
     const [itemStock, setItemStock] = useState('');
@@ -105,6 +106,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
         setItemType('');
         setItemQuantity(1);
         setItemPrice('');
+        setItemWeight('');
         setItemCategoryId('');
         setItemMaxPerPlayer('');
         setItemStock('');
@@ -119,6 +121,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
         setItemType(item.item_type);
         setItemQuantity(item.quantity);
         setItemPrice(item.price);
+        setItemWeight(item.weight?.toString() || '');
         setItemCategoryId(item.category_id || '');
         setItemMaxPerPlayer(item.max_per_player?.toString() || '');
         setItemStock(item.stock?.toString() || '');
@@ -151,6 +154,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
             description: itemDescription || null,
             item_type: itemType,
             quantity: itemQuantity,
+            weight: itemWeight ? parseFloat(itemWeight) : null,
             price: parseFloat(itemPrice),
             category_id: itemCategoryId || null,
             max_per_player: itemMaxPerPlayer ? parseInt(itemMaxPerPlayer) : null,
@@ -478,7 +482,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                 </div>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label>PZ Quantity</Label>
                                 <Input
@@ -486,6 +490,17 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                     min={1}
                                     value={itemQuantity}
                                     onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Weight (kg)</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min={0}
+                                    placeholder="Optional"
+                                    value={itemWeight}
+                                    onChange={(e) => setItemWeight(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">

@@ -328,6 +328,7 @@ export type ShopItem = {
     description: string | null;
     item_type: string;
     quantity: number;
+    weight: string | null;
     price: string;
     is_active: boolean;
     is_featured: boolean;
@@ -379,7 +380,7 @@ export type WalletTransaction = {
     type: 'credit' | 'debit' | 'refund';
     amount: string;
     balance_after: string;
-    source: 'admin_award' | 'purchase' | 'refund' | 'system' | 'payment' | 'in_game_deposit';
+    source: 'admin_award' | 'purchase' | 'refund' | 'system' | 'payment' | 'in_game_deposit' | 'admin_reset';
     description: string | null;
     created_at: string;
 };

@@ -68,6 +68,7 @@ const adminNavGroups: NavGroup[] = [
             { title: 'Items & Categories', href: '/admin/shop', icon: Store },
             { title: 'Bundles', href: '/admin/shop/bundles', icon: Package },
             { title: 'Promotions', href: '/admin/shop/promotions', icon: Tag },
+            { title: 'Purchases', href: '/admin/shop/purchases', icon: ShoppingBag },
             { title: 'Wallets', href: '/admin/wallets', icon: Wallet },
         ],
     },

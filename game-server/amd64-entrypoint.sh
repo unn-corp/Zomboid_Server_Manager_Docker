@@ -1,35 +1,24 @@
 #!/bin/bash
 # Wrapper entrypoint for the AMD64 game server image (renegademaster).
-# Patches run_server.sh to inject ZomboidManager files and run configure-server.sh
-# AFTER SteamCMD validate but BEFORE start_server.
+# Patches run_server.sh to run configure-server.sh AFTER SteamCMD validate
+# but BEFORE start_server.
 #
-# ZomboidManager is a server-only bridge mod. Its Lua files are injected directly
-# into the base game's media/lua/server/ directory (not loaded as a PZ mod) to
-# avoid client checksum errors. The source files are mounted read-only at
-# /home/steam/Zomboid/mods/ZomboidManager/.
+# ZomboidManager is loaded as a proper PZ mod (added to Mods= line by
+# configure-server.sh). This ensures both server and client Lua files are
+# distributed to connecting players. DoLuaChecksum=false prevents checksum
+# errors. Source files are mounted at /home/steam/Zomboid/mods/ZomboidManager/.
 
 CONFIGURE_SCRIPT="/home/steam/configure-server.sh"
-ZM_SOURCE="/home/steam/Zomboid/mods/ZomboidManager/media/lua/server"
-ZM_TARGET="/home/steam/ZomboidDedicatedServer/media/lua/server"
 
-# Create a small injection script that runs after SteamCMD but before start_server
-cat > /home/steam/inject-zm.sh << 'EOSCRIPT'
-#!/bin/bash
-ZM_SOURCE="/home/steam/Zomboid/mods/ZomboidManager/media/lua/server"
-ZM_TARGET="/home/steam/ZomboidDedicatedServer/media/lua/server"
-if [ -d "$ZM_SOURCE" ] && [ -d "$ZM_TARGET" ]; then
-    cp "$ZM_SOURCE"/ZM_*.lua "$ZM_TARGET/"
-    echo "[inject-zm] Injected ZomboidManager Lua files into base game server dir"
-else
-    echo "[inject-zm] WARNING: source ($ZM_SOURCE) or target ($ZM_TARGET) not found"
-fi
-EOSCRIPT
-chmod +x /home/steam/inject-zm.sh
-
-# Patch run_server.sh to run injection + configure AFTER SteamCMD but BEFORE start_server
-# Order: SteamCMD validate -> inject ZM files -> configure-server.sh -> start_server
-sed -i '/^start_server$/i bash /home/steam/inject-zm.sh' /home/steam/run_server.sh
-echo "[entrypoint] Patched run_server.sh to inject ZM files before start"
+# Clean up previously injected ZM files from base game directory.
+# ZomboidManager is now loaded as a proper PZ mod, so these copies would
+# cause double-loading if left in place.
+for dir in /home/steam/ZomboidDedicatedServer/media/lua/server /home/steam/ZomboidDedicatedServer/media/lua/client; do
+    if ls "$dir"/ZM_*.lua 1>/dev/null 2>&1; then
+        rm -f "$dir"/ZM_*.lua
+        echo "[entrypoint] Cleaned up old injected ZM files from $dir"
+    fi
+done
 
 if [ -f "$CONFIGURE_SCRIPT" ]; then
     sed -i '/^start_server$/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh

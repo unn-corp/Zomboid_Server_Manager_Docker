@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AdminSetPasswordRequest;
 use App\Models\PlayerStat;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\OnlinePlayersReader;
+use App\Services\PzPasswordSyncService;
 use App\Services\RconClient;
 use App\Services\RespawnDelayManager;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +23,7 @@ class PlayerController extends Controller
         private readonly AuditLogger $auditLogger,
         private readonly OnlinePlayersReader $onlinePlayers,
         private readonly RespawnDelayManager $respawnDelay,
+        private readonly PzPasswordSyncService $pzPasswordSync,
     ) {}
 
     public function index(): Response
@@ -152,5 +155,28 @@ class PlayerController extends Controller
         );
 
         return response()->json(['message' => "Set {$name} access to {$level}"]);
+    }
+
+    public function setPassword(AdminSetPasswordRequest $request, string $name): JsonResponse
+    {
+        $user = User::where('username', $name)->first();
+
+        if (! $user) {
+            return response()->json(['error' => "User {$name} not found"], 404);
+        }
+
+        $user->update(['password' => $request->password]);
+
+        $this->pzPasswordSync->sync($name, $request->password);
+
+        $this->auditLogger->log(
+            actor: $request->user()->name ?? 'admin',
+            action: 'player.setpassword',
+            target: $name,
+            details: [],
+            ip: $request->ip(),
+        );
+
+        return response()->json(['message' => "Password set for {$name}"]);
     }
 }

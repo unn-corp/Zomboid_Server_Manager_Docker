@@ -39,6 +39,9 @@ export default function Wallets({ users }: Props) {
     const [txOpen, setTxOpen] = useState(false);
     const [txUser, setTxUser] = useState<WalletUser | null>(null);
     const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetUser, setResetUser] = useState<WalletUser | null>(null);
+    const [resetLoading, setResetLoading] = useState(false);
 
     const filteredUsers = useMemo(() => {
         if (!filter) return users;
@@ -69,6 +72,22 @@ export default function Wallets({ users }: Props) {
         });
         setLoading(false);
         setCreditOpen(false);
+        router.reload();
+    }
+
+    function openReset(user: WalletUser) {
+        setResetUser(user);
+        setResetOpen(true);
+    }
+
+    async function handleReset() {
+        if (!resetUser) return;
+        setResetLoading(true);
+        await fetchAction(`/admin/wallets/${resetUser.id}/reset`, {
+            successMessage: `${resetUser.username}'s balance has been reset to 0`,
+        });
+        setResetLoading(false);
+        setResetOpen(false);
         router.reload();
     }
 
@@ -172,6 +191,11 @@ export default function Wallets({ users }: Props) {
                                             <Button variant="outline" size="sm" onClick={() => viewTransactions(user)}>
                                                 History
                                             </Button>
+                                            {user.balance > 0 && (
+                                                <Button variant="destructive" size="sm" onClick={() => openReset(user)}>
+                                                    Reset
+                                                </Button>
+                                            )}
                                             <Button size="sm" onClick={() => openCredit(user)}>
                                                 Award
                                             </Button>
@@ -223,6 +247,28 @@ export default function Wallets({ users }: Props) {
                         </Button>
                         <Button disabled={!amount || parseFloat(amount) <= 0 || loading} onClick={handleCredit}>
                             Award
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reset Balance Dialog */}
+            <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reset Balance</DialogTitle>
+                        <DialogDescription>
+                            This will set {resetUser?.username}'s balance to 0. Current balance:{' '}
+                            <span className="font-bold">{resetUser?.balance.toFixed(2)}</span>.
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setResetOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" disabled={resetLoading} onClick={handleReset}>
+                            Reset to 0
                         </Button>
                     </DialogFooter>
                 </DialogContent>

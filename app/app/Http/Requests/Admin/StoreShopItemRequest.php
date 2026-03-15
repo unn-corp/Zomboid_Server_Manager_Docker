@@ -22,6 +22,7 @@ class StoreShopItemRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:1000'],
             'item_type' => ['required', 'string', 'max:255'],
             'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+            'weight' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'is_featured' => ['nullable', 'boolean'],
             'max_per_player' => ['nullable', 'integer', 'min:1'],

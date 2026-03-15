@@ -20,9 +20,6 @@ print("[ZomboidManager] Initializing server-side bridge mod...")
 -- Tick counters for reduced-frequency operations.
 -- NOTE: PZ EveryOneMinute fires every ~2.5 real seconds (one in-game minute),
 -- NOT every 60 real seconds. Intervals below are in game-minute ticks.
-local inventoryTickCounter = 0
-local INVENTORY_EXPORT_INTERVAL = 120 -- ~5 real minutes (120 × 2.5s)
-
 local positionTickCounter = 0
 local POSITION_EXPORT_INTERVAL = 12 -- ~30 real seconds
 
@@ -63,15 +60,8 @@ end
 --- EveryOneMinute — inventory export, delivery queue, live positions, game state
 --- NOTE: This fires every ~2.5 real seconds (one in-game minute), not every 60s.
 local function onEveryOneMinute()
-    -- Export inventories (heavy: serializes all players + writes JSON per player)
-    inventoryTickCounter = inventoryTickCounter + 1
-    if inventoryTickCounter >= INVENTORY_EXPORT_INTERVAL then
-        inventoryTickCounter = 0
-        local invCount = ZM_InventoryExporter.exportAll()
-        if invCount > 0 then
-            print("[ZomboidManager] Exported " .. invCount .. " player inventories")
-        end
-    end
+    -- Process on-demand export requests (lightweight file existence check every tick)
+    ZM_InventoryExporter.processExportRequests()
 
     -- Process delivery queue
     deliveryTickCounter = deliveryTickCounter + 1

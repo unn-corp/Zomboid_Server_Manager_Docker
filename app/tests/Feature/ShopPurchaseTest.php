@@ -6,6 +6,7 @@ use App\Models\ShopItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WhitelistEntry;
+use App\Services\OnlinePlayersReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -17,6 +18,11 @@ beforeEach(function () {
         WhitelistEntry::factory()->make(['pz_username' => 'testplayer'])
     );
     Wallet::factory()->for($this->user)->create(['balance' => 1000, 'total_earned' => 1000, 'total_spent' => 0]);
+
+    // Mock online players reader — purchases require the player to be online
+    $mock = Mockery::mock(OnlinePlayersReader::class);
+    $mock->shouldReceive('getOnlineUsernames')->andReturn(['testplayer']);
+    $this->app->instance(OnlinePlayersReader::class, $mock);
 });
 
 it('lists shop items publicly without auth', function () {

@@ -16,6 +16,7 @@ function stage2Headers(): array
 
 beforeEach(function () {
     config(['zomboid.api_key' => 'test-key-12345']);
+    config(['queue.default' => 'sync']);
     cache()->forget('backup.schedule.hourly_enabled');
     cache()->forget('backup.schedule.daily_enabled');
     cache()->forget('backup.schedule.daily_time');

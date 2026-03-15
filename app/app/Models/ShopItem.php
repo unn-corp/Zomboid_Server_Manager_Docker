@@ -19,6 +19,7 @@ class ShopItem extends Model
         'description',
         'item_type',
         'quantity',
+        'weight',
         'price',
         'is_active',
         'is_featured',
@@ -31,6 +32,7 @@ class ShopItem extends Model
     {
         return [
             'price' => 'decimal:2',
+            'weight' => 'decimal:2',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'metadata' => 'array',

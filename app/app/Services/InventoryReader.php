@@ -6,9 +6,12 @@ class InventoryReader
 {
     private string $inventoryDir;
 
-    public function __construct(?string $inventoryDir = null)
+    private string $exportRequestsPath;
+
+    public function __construct(?string $inventoryDir = null, ?string $exportRequestsPath = null)
     {
         $this->inventoryDir = $inventoryDir ?? config('zomboid.lua_bridge.inventory_dir');
+        $this->exportRequestsPath = $exportRequestsPath ?? config('zomboid.lua_bridge.export_requests');
     }
 
     /**
@@ -76,5 +79,47 @@ class InventoryReader
         }
 
         return $inventories;
+    }
+
+    /**
+     * Request the Lua mod to export a player's inventory on-demand.
+     * Writes to export_requests.json atomically (temp file + rename).
+     */
+    public function requestExport(string $username): bool
+    {
+        $existing = [];
+
+        if (file_exists($this->exportRequestsPath)) {
+            $content = file_get_contents($this->exportRequestsPath);
+            if ($content !== false) {
+                $data = json_decode($content, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($data['usernames'])) {
+                    $existing = $data['usernames'];
+                }
+            }
+        }
+
+        if (! in_array($username, $existing, true)) {
+            $existing[] = $username;
+        }
+
+        $payload = [
+            'usernames' => $existing,
+            'updated_at' => date('c'),
+        ];
+
+        $dir = dirname($this->exportRequestsPath);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $tmpPath = $this->exportRequestsPath.'.tmp.'.getmypid();
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        if (file_put_contents($tmpPath, $json) === false) {
+            return false;
+        }
+
+        return rename($tmpPath, $this->exportRequestsPath);
     }
 }

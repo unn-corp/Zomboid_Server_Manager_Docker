@@ -58,7 +58,7 @@ function mockDeliveryQueue(): DeliveryQueueManager
             'username' => $user,
             'item_type' => $type,
             'count' => $count,
-            'status' => 'pending',
+            'status' => 'delivered',
             'created_at' => date('c'),
         ])
         ->byDefault();
@@ -69,7 +69,7 @@ function mockDeliveryQueue(): DeliveryQueueManager
             'username' => $user,
             'item_type' => $type,
             'count' => $count,
-            'status' => 'pending',
+            'status' => 'delivered',
             'created_at' => date('c'),
         ])
         ->byDefault();
@@ -167,8 +167,9 @@ it('gives an item to a player', function () {
         'username' => 'TestPlayer',
         'item_type' => 'Base.Axe',
         'count' => 1,
-        'status' => 'pending',
     ]);
+    // Status can be 'delivered' (RCON) or 'pending' (queue fallback)
+    expect($response->json('status'))->toBeIn(['delivered', 'pending']);
 });
 
 it('gives multiple items to a player', function () {

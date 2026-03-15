@@ -48,7 +48,7 @@ local function findPlayer(username)
     return nil
 end
 
---- Give item to player
+--- Give item to player (fallback when RCON is unavailable)
 local function giveItem(player, itemType, count)
     local inventory = player:getInventory()
     if not inventory then
@@ -62,7 +62,44 @@ local function giveItem(player, itemType, count)
         end
     end
 
+    -- Tell the client to add the item locally for instant UI update.
+    if isServer() then
+        sendServerCommand(player, "ZomboidManager", "addItem", {
+            item_type = itemType,
+            count = tostring(count),
+        })
+    end
+
     return true, nil
+end
+
+--- Remove a single item from the player, handling equipped/worn items.
+local function removeOneItem(player, inventory, itemType)
+    local item = inventory:getFirstTypeRecurse(itemType)
+    if not item then
+        return false
+    end
+
+    -- Unequip if the item is worn or held — otherwise the client
+    -- keeps showing it in the equipment slot even after container removal.
+    if player:isEquipped(item) then
+        player:removeWornItem(item)
+    end
+    if player:getPrimaryHandItem() == item then
+        player:setPrimaryHandItem(nil)
+    end
+    if player:getSecondaryHandItem() == item then
+        player:setSecondaryHandItem(nil)
+    end
+
+    local container = item:getContainer()
+    if container then
+        container:DoRemoveItem(item)
+    else
+        inventory:DoRemoveItem(item)
+    end
+
+    return true
 end
 
 --- Remove item from player
@@ -74,22 +111,25 @@ local function removeItem(player, itemType, count)
 
     local removed = 0
     for i = 1, count do
-        local item = inventory:getFirstTypeRecurse(itemType)
-        if item then
-            local container = item:getContainer()
-            if container then
-                container:removeItemOnServer(item)
-                removed = removed + 1
-            else
-                inventory:Remove(item)
-                removed = removed + 1
-            end
+        if removeOneItem(player, inventory, itemType) then
+            removed = removed + 1
         end
     end
 
     if removed < count then
         return false, "only removed " .. removed .. "/" .. count .. " items"
     end
+
+    -- Tell the client to mirror the removal for instant UI update.
+    -- Server-side container removal doesn't sync to the client in PZ,
+    -- so the client handler removes the item from its local copy.
+    if isServer() and removed > 0 then
+        sendServerCommand(player, "ZomboidManager", "removeItem", {
+            item_type = itemType,
+            count = tostring(removed),
+        })
+    end
+
     return true, nil
 end
 

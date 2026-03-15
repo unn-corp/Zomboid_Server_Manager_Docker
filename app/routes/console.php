@@ -28,9 +28,9 @@ Schedule::command('zomboid:process-respawn-kicks')->everyFiveMinutes();
 
 Schedule::command('zomboid:parse-game-events')->everyFiveMinutes();
 
-Schedule::command('zomboid:process-shop-deliveries')->everyFiveMinutes();
+Schedule::command('zomboid:process-shop-deliveries')->everyMinute();
 
-Schedule::command('zomboid:process-money-deposits')->everyFiveMinutes();
+Schedule::command('zomboid:process-money-deposits')->everyMinute();
 
 Schedule::command('zomboid:generate-map-tiles')
     ->everyThirtyMinutes()

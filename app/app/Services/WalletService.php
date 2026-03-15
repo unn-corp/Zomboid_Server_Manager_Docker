@@ -114,6 +114,36 @@ class WalletService
     }
 
     /**
+     * Reset a wallet balance to zero.
+     */
+    public function resetBalance(Wallet $wallet, ?string $description = null): ?WalletTransaction
+    {
+        return DB::transaction(function () use ($wallet, $description) {
+            $wallet = Wallet::query()->lockForUpdate()->find($wallet->id);
+
+            $currentBalance = (float) $wallet->balance;
+
+            if ($currentBalance <= 0) {
+                $wallet->balance = 0;
+                $wallet->save();
+
+                return null;
+            }
+
+            $wallet->balance = 0;
+            $wallet->save();
+
+            return $wallet->transactions()->create([
+                'type' => TransactionType::Debit,
+                'amount' => $currentBalance,
+                'balance_after' => 0,
+                'source' => TransactionSource::AdminReset,
+                'description' => $description ?? 'Balance reset by admin',
+            ]);
+        });
+    }
+
+    /**
      * Get current balance for a user.
      */
     public function getBalance(User $user): float

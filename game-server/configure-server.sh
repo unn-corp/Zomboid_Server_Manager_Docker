@@ -86,19 +86,22 @@ if [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
     apply_setting "WorkshopItems"    "${PZ_WORKSHOP_IDS}"           "$INI_FILE"
 fi
 
-# Disable Lua checksum — required for server-side ZomboidManager injection.
-# Without this, PZ checksums injected Lua files and tells clients to verify them,
-# causing "file does not exist" errors. This does NOT disable anti-cheat (Steam VAC).
+# Disable Lua checksum — required for ZomboidManager mod.
+# Without this, PZ checksums mod Lua files and clients that don't have matching
+# checksums get errors. This does NOT disable anti-cheat (Steam VAC).
 apply_setting "DoLuaChecksum" "false" "$INI_FILE"
-echo "[configure-server] Set DoLuaChecksum=false (required for ZomboidManager injection)"
+echo "[configure-server] Set DoLuaChecksum=false (required for ZomboidManager mod)"
 
-# Strip ZomboidManager from Mods= if present (legacy cleanup).
-# ZM is injected into base game dir, not loaded as a PZ mod.
+# Ensure ZomboidManager is in the Mods= list.
+# Loaded as a proper PZ mod so both server and client Lua files are distributed.
 CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
-if echo "$CURRENT_MODS" | grep -q "ZomboidManager"; then
-    CLEANED_MODS=$(echo "$CURRENT_MODS" | sed 's/;*ZomboidManager;*/;/g' | sed 's/^;*//;s/;*$//')
-    apply_setting "Mods" "$CLEANED_MODS" "$INI_FILE"
-    echo "[configure-server] Removed ZomboidManager from Mods list (injected as base game scripts)"
+if ! echo "$CURRENT_MODS" | grep -q "ZomboidManager"; then
+    if [ -n "$CURRENT_MODS" ]; then
+        apply_setting "Mods" "${CURRENT_MODS};ZomboidManager" "$INI_FILE"
+    else
+        apply_setting "Mods" "ZomboidManager" "$INI_FILE"
+    fi
+    echo "[configure-server] Added ZomboidManager to Mods list"
 fi
 
 # Auto-register Log Extender mod (Workshop #1844524972) if not already present

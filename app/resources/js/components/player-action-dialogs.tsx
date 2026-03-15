@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Ban, ShieldCheck, TimerReset, UserX } from 'lucide-react';
+import { Ban, KeyRound, ShieldCheck, TimerReset, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,10 +25,12 @@ type Props = {
     kickTarget: string | null;
     banTarget: string | null;
     accessTarget: string | null;
+    passwordTarget?: string | null;
     resetTimerTarget?: string | null;
     onCloseKick: () => void;
     onCloseBan: () => void;
     onCloseAccess: () => void;
+    onClosePassword?: () => void;
     onCloseResetTimer?: () => void;
     reloadOnly: string[];
 };
@@ -37,15 +39,19 @@ export default function PlayerActionDialogs({
     kickTarget,
     banTarget,
     accessTarget,
+    passwordTarget = null,
     resetTimerTarget = null,
     onCloseKick,
     onCloseBan,
     onCloseAccess,
+    onClosePassword,
     onCloseResetTimer,
     reloadOnly,
 }: Props) {
     const [reason, setReason] = useState('');
     const [accessLevel, setAccessLevel] = useState('none');
+    const [password, setPassword] = useState('');
+    const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [loading, setLoading] = useState(false);
 
     async function handleAction(url: string, data: Record<string, unknown>, onDone: () => void) {
@@ -162,6 +168,78 @@ export default function PlayerActionDialogs({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Set Password Dialog */}
+            {onClosePassword && (
+                <Dialog
+                    open={passwordTarget !== null}
+                    onOpenChange={() => {
+                        setPassword('');
+                        setPasswordConfirmation('');
+                        onClosePassword();
+                    }}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Set Password for {passwordTarget}</DialogTitle>
+                            <DialogDescription>
+                                This will update both the web login and PZ game server passwords.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="new-password">New Password</Label>
+                                <Input
+                                    id="new-password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="New password..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirm-password">Confirm Password</Label>
+                                <Input
+                                    id="confirm-password"
+                                    type="password"
+                                    value={passwordConfirmation}
+                                    onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                    placeholder="Confirm password..."
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setPassword('');
+                                    setPasswordConfirmation('');
+                                    onClosePassword();
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={loading || !password}
+                                onClick={() => {
+                                    handleAction(
+                                        `/admin/players/${passwordTarget}/password`,
+                                        { password, password_confirmation: passwordConfirmation },
+                                        () => {
+                                            setPassword('');
+                                            setPasswordConfirmation('');
+                                            onClosePassword();
+                                        },
+                                    );
+                                }}
+                            >
+                                <KeyRound className="mr-1.5 size-3.5" />
+                                Set Password
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
 
             {/* Reset Respawn Timer Dialog */}
             {onCloseResetTimer && (

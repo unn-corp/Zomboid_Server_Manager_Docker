@@ -9,6 +9,7 @@ use App\Models\ShopCategory;
 use App\Models\ShopItem;
 use App\Models\ShopPromotion;
 use App\Models\WhitelistEntry;
+use App\Services\InventoryReader;
 use App\Services\ItemIconResolver;
 use App\Services\MoneyDepositManager;
 use App\Services\OnlinePlayersReader;
@@ -29,6 +30,7 @@ class ShopController extends Controller
         private readonly ItemIconResolver $iconResolver,
         private readonly MoneyDepositManager $depositManager,
         private readonly OnlinePlayersReader $onlinePlayersReader,
+        private readonly InventoryReader $inventoryReader,
     ) {}
 
     /**
@@ -141,6 +143,38 @@ class ShopController extends Controller
         $validated = $request->validated();
         $quantity = $validated['quantity'] ?? 1;
 
+        // Verify player is online — items can only be delivered to online players
+        $whitelistEntry = WhitelistEntry::query()
+            ->where('user_id', $request->user()->id)
+            ->where('active', true)
+            ->first();
+
+        if (! $whitelistEntry) {
+            return response()->json(['error' => 'No linked PZ account found. Link your account first.'], 422);
+        }
+
+        $onlinePlayers = $this->onlinePlayersReader->getOnlineUsernames();
+        if (! in_array($whitelistEntry->pz_username, $onlinePlayers, true)) {
+            return response()->json(['error' => 'You must be online in-game to purchase items.'], 422);
+        }
+
+        // Best-effort inventory weight check
+        if ($item->weight !== null) {
+            $inventory = $this->inventoryReader->getPlayerInventory($whitelistEntry->pz_username);
+            if ($inventory) {
+                $currentWeight = (float) ($inventory['weight'] ?? 0);
+                $maxWeight = (float) ($inventory['max_weight'] ?? 15);
+                $addedWeight = (float) $item->weight * $item->quantity * $quantity;
+                if ($currentWeight + $addedWeight > $maxWeight) {
+                    $freeSpace = max(0, $maxWeight - $currentWeight);
+
+                    return response()->json([
+                        'error' => "Not enough inventory space. You have {$freeSpace} / {$maxWeight} kg free, but this purchase would add {$addedWeight} kg.",
+                    ], 422);
+                }
+            }
+        }
+
         $promotion = null;
         if (! empty($validated['promotion_code'])) {
             $promotion = ShopPromotion::query()
@@ -206,9 +240,50 @@ class ShopController extends Controller
         $bundle = ShopBundle::query()
             ->where('slug', $slug)
             ->where('is_active', true)
+            ->with('items')
             ->firstOrFail();
 
         $validated = $request->validated();
+
+        // Verify player is online — items can only be delivered to online players
+        $whitelistEntry = WhitelistEntry::query()
+            ->where('user_id', $request->user()->id)
+            ->where('active', true)
+            ->first();
+
+        if (! $whitelistEntry) {
+            return response()->json(['error' => 'No linked PZ account found. Link your account first.'], 422);
+        }
+
+        $onlinePlayers = $this->onlinePlayersReader->getOnlineUsernames();
+        if (! in_array($whitelistEntry->pz_username, $onlinePlayers, true)) {
+            return response()->json(['error' => 'You must be online in-game to purchase items.'], 422);
+        }
+
+        // Best-effort inventory weight check for bundles
+        $totalBundleWeight = 0;
+        $hasWeightData = false;
+        foreach ($bundle->items as $bundleItem) {
+            if ($bundleItem->weight !== null) {
+                $hasWeightData = true;
+                $totalBundleWeight += (float) $bundleItem->weight * $bundleItem->pivot->quantity;
+            }
+        }
+
+        if ($hasWeightData && $totalBundleWeight > 0) {
+            $inventory = $this->inventoryReader->getPlayerInventory($whitelistEntry->pz_username);
+            if ($inventory) {
+                $currentWeight = (float) ($inventory['weight'] ?? 0);
+                $maxWeight = (float) ($inventory['max_weight'] ?? 15);
+                if ($currentWeight + $totalBundleWeight > $maxWeight) {
+                    $freeSpace = max(0, $maxWeight - $currentWeight);
+
+                    return response()->json([
+                        'error' => "Not enough inventory space. You have {$freeSpace} / {$maxWeight} kg free, but this bundle would add {$totalBundleWeight} kg.",
+                    ], 422);
+                }
+            }
+        }
 
         $promotion = null;
         if (! empty($validated['promotion_code'])) {
@@ -292,6 +367,7 @@ class ShopController extends Controller
 
     /**
      * Poll endpoint for deposit status (used by frontend polling).
+     * Also processes deposit results inline for near-instant wallet crediting.
      */
     public function depositStatus(Request $request): JsonResponse
     {
@@ -306,12 +382,20 @@ class ShopController extends Controller
             return response()->json([
                 'pendingDeposit' => false,
                 'lastDepositResult' => null,
+                'balance' => $this->walletService->getBalance($user),
             ]);
+        }
+
+        // Process any available deposit results inline for instant wallet crediting
+        $creditedIds = $this->depositManager->processResults($this->walletService);
+        if (count($creditedIds) > 0) {
+            $this->depositManager->removeProcessedResults($creditedIds);
         }
 
         return response()->json([
             'pendingDeposit' => $this->depositManager->hasPendingRequest($whitelistEntry->pz_username),
             'lastDepositResult' => $this->depositManager->getLastResult($whitelistEntry->pz_username),
+            'balance' => $this->walletService->getBalance($user),
         ]);
     }
 
