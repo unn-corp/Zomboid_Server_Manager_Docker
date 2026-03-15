@@ -79,8 +79,8 @@ const playerNavGroups: NavGroup[] = [
         label: 'Menu',
         items: [
             { title: 'Player Portal', href: '/portal', icon: Gamepad2 },
-            { title: 'Shop', href: '/shop', icon: ShoppingBag },
             { title: 'My Wallet', href: '/shop/my/wallet', icon: Coins },
+            { title: 'Shop', href: '/shop', icon: ShoppingBag },
             { title: 'Rankings', href: '/rankings', icon: Trophy },
         ],
     },

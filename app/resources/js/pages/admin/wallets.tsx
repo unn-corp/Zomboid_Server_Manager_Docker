@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Coins, Search } from 'lucide-react';
+import { Coins, MoreHorizontal, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
@@ -28,6 +36,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Wallets', href: '/admin/wallets' },
 ];
+
+function coin(v: string | number): number {
+    return Math.round(typeof v === 'string' ? parseFloat(v) : v);
+}
 
 export default function Wallets({ users }: Props) {
     const [filter, setFilter] = useState('');
@@ -122,7 +134,7 @@ export default function Wallets({ users }: Props) {
                         <CardContent className="flex items-center gap-3 pt-6">
                             <Coins className="text-muted-foreground size-5" />
                             <div>
-                                <p className="text-2xl font-bold tabular-nums">{totalBalance.toFixed(2)}</p>
+                                <p className="text-2xl font-bold tabular-nums">{coin(totalBalance)}</p>
                                 <p className="text-muted-foreground text-xs">Total in Circulation</p>
                             </div>
                         </CardContent>
@@ -141,7 +153,7 @@ export default function Wallets({ users }: Props) {
                             <Coins className="text-muted-foreground size-5" />
                             <div>
                                 <p className="text-2xl font-bold tabular-nums">
-                                    {users.length > 0 ? (totalBalance / users.length).toFixed(2) : '0.00'}
+                                    {users.length > 0 ? coin(totalBalance / users.length) : 0}
                                 </p>
                                 <p className="text-muted-foreground text-xs">Average Balance</p>
                             </div>
@@ -169,40 +181,67 @@ export default function Wallets({ users }: Props) {
                     </CardHeader>
                     <CardContent>
                         {filteredUsers.length > 0 ? (
-                            <div className="space-y-2">
-                                {filteredUsers.map((user) => (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div>
-                                                <span className="text-sm font-medium">{user.username}</span>
-                                                <p className="text-muted-foreground text-xs">
-                                                    Earned: {user.total_earned.toFixed(2)} &middot;
-                                                    Spent: {user.total_spent.toFixed(2)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="secondary" className="tabular-nums text-sm">
-                                                {user.balance.toFixed(2)}
-                                            </Badge>
-                                            <Button variant="outline" size="sm" onClick={() => viewTransactions(user)}>
-                                                History
-                                            </Button>
-                                            {user.balance > 0 && (
-                                                <Button variant="destructive" size="sm" onClick={() => openReset(user)}>
-                                                    Reset
-                                                </Button>
-                                            )}
-                                            <Button size="sm" onClick={() => openCredit(user)}>
-                                                Award
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Username</TableHead>
+                                        <TableHead className="text-right">Balance</TableHead>
+                                        <TableHead className="text-right">Total Earned</TableHead>
+                                        <TableHead className="text-right">Total Spent</TableHead>
+                                        <TableHead className="w-[60px]" />
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUsers.map((user) => (
+                                        <TableRow key={user.id}>
+                                            <TableCell>
+                                                <span className="font-medium">{user.username}</span>
+                                                {user.name && user.name !== user.username && (
+                                                    <p className="text-muted-foreground text-xs">{user.name}</p>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {coin(user.balance)}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums text-green-600">
+                                                {coin(user.total_earned)}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums text-red-600">
+                                                {coin(user.total_spent)}
+                                            </TableCell>
+                                            <TableCell>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="size-8">
+                                                            <MoreHorizontal className="size-4" />
+                                                            <span className="sr-only">Actions</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => openCredit(user)}>
+                                                            Award
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => viewTransactions(user)}>
+                                                            History
+                                                        </DropdownMenuItem>
+                                                        {user.balance > 0 && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    variant="destructive"
+                                                                    onClick={() => openReset(user)}
+                                                                >
+                                                                    Reset Balance
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         ) : (
                             <p className="text-muted-foreground py-8 text-center">
                                 No players found.
@@ -226,8 +265,8 @@ export default function Wallets({ users }: Props) {
                             <Label>Amount</Label>
                             <Input
                                 type="number"
-                                step="0.01"
-                                min={0.01}
+                                step="1"
+                                min={1}
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                             />
@@ -259,7 +298,7 @@ export default function Wallets({ users }: Props) {
                         <DialogTitle>Reset Balance</DialogTitle>
                         <DialogDescription>
                             This will set {resetUser?.username}'s balance to 0. Current balance:{' '}
-                            <span className="font-bold">{resetUser?.balance.toFixed(2)}</span>.
+                            <span className="font-bold">{resetUser ? coin(resetUser.balance) : 0}</span>.
                             This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
@@ -312,10 +351,10 @@ export default function Wallets({ users }: Props) {
                                                 }`}
                                             >
                                                 {tx.type === 'debit' ? '-' : '+'}
-                                                {parseFloat(tx.amount).toFixed(2)}
+                                                {coin(tx.amount)}
                                             </span>
                                             <p className="text-muted-foreground text-xs tabular-nums">
-                                                Bal: {parseFloat(tx.balance_after).toFixed(2)}
+                                                Bal: {coin(tx.balance_after)}
                                             </p>
                                         </div>
                                     </div>

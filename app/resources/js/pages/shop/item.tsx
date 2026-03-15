@@ -72,7 +72,7 @@ export default function ShopItemDetail({ item, bundle, balance }: Props) {
     return (
         <PublicLayout>
             <Head title={name} />
-            <div className="mx-auto max-w-2xl space-y-6 p-6">
+            <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
                 <Button variant="ghost" size="sm" onClick={() => router.visit('/shop')}>
                     <ArrowLeft className="mr-1.5 size-4" />
                     Back to Shop
@@ -80,12 +80,12 @@ export default function ShopItemDetail({ item, bundle, balance }: Props) {
 
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <CardTitle className="text-xl">{name}</CardTitle>
                             {balance !== null && (
                                 <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
                                     <Coins className="size-4 text-amber-500" />
-                                    <span className="font-bold tabular-nums">{balance.toFixed(2)}</span>
+                                    <span className="font-bold tabular-nums">{Math.round(balance)}</span>
                                 </div>
                             )}
                         </div>
@@ -105,7 +105,7 @@ export default function ShopItemDetail({ item, bundle, balance }: Props) {
                                         <p className="text-muted-foreground text-sm">{item.item_type}</p>
                                         <div className="flex items-center gap-1.5">
                                             <Coins className="size-4 text-amber-500" />
-                                            <span className="text-2xl font-bold tabular-nums">{price.toFixed(2)}</span>
+                                            <span className="text-2xl font-bold tabular-nums">{Math.round(price)}</span>
                                         </div>
                                         {item.quantity > 1 && (
                                             <p className="text-muted-foreground text-sm">x{item.quantity} items per purchase</p>
@@ -132,7 +132,7 @@ export default function ShopItemDetail({ item, bundle, balance }: Props) {
                                 {bundle.description && <p className="text-muted-foreground">{bundle.description}</p>}
                                 <div className="flex items-center gap-1.5">
                                     <Coins className="size-4 text-amber-500" />
-                                    <span className="text-2xl font-bold tabular-nums">{price.toFixed(2)}</span>
+                                    <span className="text-2xl font-bold tabular-nums">{Math.round(price)}</span>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Bundle includes:</Label>
@@ -199,7 +199,7 @@ export default function ShopItemDetail({ item, bundle, balance }: Props) {
                             <span className="font-medium">Total</span>
                             <div className="flex items-center gap-1.5">
                                 <Coins className="size-4 text-amber-500" />
-                                <span className="text-lg font-bold tabular-nums">{totalPrice.toFixed(2)}</span>
+                                <span className="text-lg font-bold tabular-nums">{Math.round(totalPrice)}</span>
                             </div>
                         </div>
                         {balance !== null && totalPrice > balance && (

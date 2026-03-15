@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Coins, Package, Search, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { ShopDelivery, ShopPurchase } from '@/types/server';
@@ -61,6 +63,10 @@ const statusColors: Record<string, string> = {
     partially_delivered: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
     failed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 };
+
+function coin(v: string | number): number {
+    return Math.round(typeof v === 'string' ? parseFloat(v) : v);
+}
 
 function StatusBadge({ status }: { status: string }) {
     return (
@@ -118,7 +124,7 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                         <CardContent className="flex items-center gap-3 pt-6">
                             <Coins className="text-muted-foreground size-5" />
                             <div>
-                                <p className="text-2xl font-bold tabular-nums">{stats.total_revenue.toFixed(2)}</p>
+                                <p className="text-2xl font-bold tabular-nums">{coin(stats.total_revenue)}</p>
                                 <p className="text-muted-foreground text-xs">Total Revenue</p>
                             </div>
                         </CardContent>
@@ -184,37 +190,41 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                     </CardHeader>
                     <CardContent>
                         {purchases.data.length > 0 ? (
-                            <div className="space-y-2">
-                                {purchases.data.map((purchase) => (
-                                    <div
-                                        key={purchase.id}
-                                        className="rounded-lg border border-border/50 p-3"
-                                    >
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium">
-                                                            {purchase.user?.username || 'Unknown'}
-                                                        </span>
-                                                        <span className="text-muted-foreground text-xs">
-                                                            bought
-                                                        </span>
-                                                        <span className="truncate text-sm font-medium">
-                                                            {purchase.quantity_bought}x {getPurchasableName(purchase)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
-                                                        <span>{new Date(purchase.created_at).toLocaleString()}</span>
-                                                        {purchase.discount_amount && parseFloat(purchase.discount_amount) > 0 && (
-                                                            <span className="text-green-600">
-                                                                -{parseFloat(purchase.discount_amount).toFixed(2)} discount
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {/* Delivery details */}
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Player</TableHead>
+                                        <TableHead>Item</TableHead>
+                                        <TableHead className="text-center">Qty</TableHead>
+                                        <TableHead className="text-right">Price</TableHead>
+                                        <TableHead className="text-right">Discount</TableHead>
+                                        <TableHead>Delivery Status</TableHead>
+                                        <TableHead>Date</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {purchases.data.map((purchase) => (
+                                        <TableRow key={purchase.id}>
+                                            <TableCell className="font-medium">
+                                                {purchase.user?.username || 'Unknown'}
+                                            </TableCell>
+                                            <TableCell>{getPurchasableName(purchase)}</TableCell>
+                                            <TableCell className="text-center">{purchase.quantity_bought}</TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {coin(purchase.total_price)}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {purchase.discount_amount && parseFloat(purchase.discount_amount) > 0 ? (
+                                                    <span className="text-green-600">-{coin(purchase.discount_amount)}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">&mdash;</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1">
+                                                    <StatusBadge status={purchase.delivery_status} />
                                                     {purchase.deliveries && purchase.deliveries.length > 0 && (
-                                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                                        <div className="mt-1 flex flex-wrap gap-1">
                                                             {purchase.deliveries.map((delivery: ShopDelivery) => (
                                                                 <Badge
                                                                     key={delivery.id}
@@ -229,17 +239,14 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                                                         </div>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div className="flex shrink-0 items-center gap-3">
-                                                <Badge variant="secondary" className="tabular-nums text-sm">
-                                                    {parseFloat(purchase.total_price).toFixed(2)}
-                                                </Badge>
-                                                <StatusBadge status={purchase.delivery_status} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                                                {new Date(purchase.created_at).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         ) : (
                             <p className="text-muted-foreground py-8 text-center">
                                 No purchases found.
@@ -247,31 +254,11 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                         )}
 
                         {/* Pagination */}
-                        {purchases.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-center gap-1">
-                                {purchases.links.map((link, i) => (
-                                    <div key={i}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded-md px-3 py-1.5 text-sm ${
-                                                    link.active
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'hover:bg-accent'
-                                                }`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                                preserveState
-                                            />
-                                        ) : (
-                                            <span
-                                                className="text-muted-foreground px-3 py-1.5 text-sm"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination
+                            currentPage={purchases.current_page}
+                            lastPage={purchases.last_page}
+                            links={purchases.links}
+                        />
                     </CardContent>
                 </Card>
             </div>

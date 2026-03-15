@@ -37,7 +37,7 @@ export default function MyWallet({ balance, transactions }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="My Wallet" />
-            <div className="mx-auto max-w-2xl space-y-6 p-6">
+            <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">My Wallet</h1>
                     <p className="text-muted-foreground text-sm">Your currency balance and transaction history</p>
@@ -47,7 +47,7 @@ export default function MyWallet({ balance, transactions }: Props) {
                 <Card>
                     <CardContent className="flex flex-col items-center gap-2 py-8">
                         <Coins className="size-10 text-amber-500" />
-                        <span className="text-4xl font-bold tabular-nums">{balance.toFixed(2)}</span>
+                        <span className="text-4xl font-bold tabular-nums">{Math.round(balance)}</span>
                         <span className="text-muted-foreground text-sm">Current Balance</span>
                     </CardContent>
                 </Card>
@@ -92,10 +92,10 @@ export default function MyWallet({ balance, transactions }: Props) {
                                                 }`}
                                             >
                                                 {tx.type === 'debit' ? '-' : '+'}
-                                                {parseFloat(tx.amount).toFixed(2)}
+                                                {Math.round(parseFloat(tx.amount))}
                                             </span>
                                             <p className="text-muted-foreground text-xs tabular-nums">
-                                                {parseFloat(tx.balance_after).toFixed(2)}
+                                                {Math.round(parseFloat(tx.balance_after))}
                                             </p>
                                         </div>
                                     </div>

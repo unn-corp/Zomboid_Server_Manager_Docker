@@ -21,11 +21,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem } from '@/types';
 import type { ItemCatalogEntry, ShopCategory, ShopItem } from '@/types/server';
+
+function coin(value: string | number): number {
+    return Math.round(typeof value === 'string' ? parseFloat(value) : value);
+}
 
 type Props = {
     categories: ShopCategory[];
@@ -155,7 +160,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
             item_type: itemType,
             quantity: itemQuantity,
             weight: itemWeight ? parseFloat(itemWeight) : null,
-            price: parseFloat(itemPrice),
+            price: parseInt(itemPrice) || 0,
             category_id: itemCategoryId || null,
             max_per_player: itemMaxPerPlayer ? parseInt(itemMaxPerPlayer) : null,
             stock: itemStock ? parseInt(itemStock) : null,
@@ -289,74 +294,89 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                         </CardHeader>
                         <CardContent>
                             {filteredItems.length > 0 ? (
-                                <div className="space-y-2">
-                                    {filteredItems.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            className="flex items-center gap-4 rounded-lg border border-border/50 p-3"
-                                        >
-                                            <ItemIcon
-                                                src={item.icon || '/images/items/placeholder.svg'}
-                                                name={item.name}
-                                            />
-                                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                                <span className="truncate text-sm font-medium">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[40px]" />
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Category</TableHead>
+                                            <TableHead className="text-right">Price</TableHead>
+                                            <TableHead className="text-center">Qty</TableHead>
+                                            <TableHead className="text-center">Stock</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredItems.map((item) => (
+                                            <TableRow key={item.id}>
+                                                <TableCell>
+                                                    <ItemIcon
+                                                        src={item.icon || '/images/items/placeholder.svg'}
+                                                        name={item.name}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium">
                                                     {item.name}
-                                                </span>
-                                                <span className="text-muted-foreground truncate text-xs">
-                                                    {item.item_type} &middot; x{item.quantity}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {item.category && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {item.category.name}
+                                                    {item.is_featured && (
+                                                        <Badge className="ml-2 bg-amber-500 text-xs">Featured</Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground max-w-[200px] truncate text-xs">
+                                                    {item.item_type}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.category && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {item.category.name}
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {coin(item.price)}
+                                                </TableCell>
+                                                <TableCell className="text-center">{item.quantity}</TableCell>
+                                                <TableCell className="text-center">
+                                                    {item.stock !== null ? item.stock : <span className="text-muted-foreground">&infin;</span>}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={item.is_active ? 'default' : 'destructive'}
+                                                        className="text-xs"
+                                                    >
+                                                        {item.is_active ? 'Active' : 'Inactive'}
                                                     </Badge>
-                                                )}
-                                                <Badge variant="secondary" className="tabular-nums text-xs">
-                                                    {parseFloat(item.price).toFixed(2)}
-                                                </Badge>
-                                                {item.stock !== null && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        Stock: {item.stock}
-                                                    </Badge>
-                                                )}
-                                                <Badge
-                                                    variant={item.is_active ? 'default' : 'destructive'}
-                                                    className="text-xs"
-                                                >
-                                                    {item.is_active ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                                {item.is_featured && (
-                                                    <Badge className="bg-amber-500 text-xs">Featured</Badge>
-                                                )}
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleToggleItem(item)}
-                                                >
-                                                    <ToggleLeft className="size-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => openEditItem(item)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteItem(item)}
-                                                >
-                                                    <Trash2 className="size-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleToggleItem(item)}
+                                                        >
+                                                            <ToggleLeft className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => openEditItem(item)}
+                                                        >
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteItem(item)}
+                                                        >
+                                                            <Trash2 className="size-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             ) : (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No shop items yet. Create one to get started.
@@ -374,51 +394,64 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                         </CardHeader>
                         <CardContent>
                             {categories.length > 0 ? (
-                                <div className="space-y-2">
-                                    {categories.map((cat) => (
-                                        <div
-                                            key={cat.id}
-                                            className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Package className="text-muted-foreground size-5" />
-                                                <div>
-                                                    <span className="text-sm font-medium">{cat.name}</span>
-                                                    {cat.description && (
-                                                        <p className="text-muted-foreground text-xs">
-                                                            {cat.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {cat.items_count ?? 0} items
-                                                </Badge>
-                                                <Badge
-                                                    variant={cat.is_active ? 'default' : 'destructive'}
-                                                    className="text-xs"
-                                                >
-                                                    {cat.is_active ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => openEditCategory(cat)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteCategory(cat)}
-                                                >
-                                                    <Trash2 className="size-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[40px]" />
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Description</TableHead>
+                                            <TableHead className="text-center">Items</TableHead>
+                                            <TableHead className="text-center">Sort Order</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {categories.map((cat) => (
+                                            <TableRow key={cat.id}>
+                                                <TableCell>
+                                                    <Package className="text-muted-foreground size-5" />
+                                                </TableCell>
+                                                <TableCell className="font-medium">{cat.name}</TableCell>
+                                                <TableCell className="text-muted-foreground max-w-[300px] truncate text-xs">
+                                                    {cat.description || '—'}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {cat.items_count ?? 0}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-center">{cat.sort_order}</TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={cat.is_active ? 'default' : 'destructive'}
+                                                        className="text-xs"
+                                                    >
+                                                        {cat.is_active ? 'Active' : 'Inactive'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => openEditCategory(cat)}
+                                                        >
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteCategory(cat)}
+                                                        >
+                                                            <Trash2 className="size-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             ) : (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No categories yet.
@@ -507,7 +540,7 @@ export default function ShopAdmin({ categories, items, catalog }: Props) {
                                 <Label>Price</Label>
                                 <Input
                                     type="number"
-                                    step="0.01"
+                                    step="1"
                                     min={0}
                                     value={itemPrice}
                                     onChange={(e) => setItemPrice(e.target.value)}

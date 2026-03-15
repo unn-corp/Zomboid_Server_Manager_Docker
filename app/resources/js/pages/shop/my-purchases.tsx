@@ -33,14 +33,14 @@ export default function MyPurchases({ purchases, balance }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="My Purchases" />
             <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">My Purchases</h1>
                         <p className="text-muted-foreground text-sm">Your purchase history</p>
                     </div>
                     <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
                         <Coins className="size-5 text-amber-500" />
-                        <span className="text-lg font-bold tabular-nums">{balance.toFixed(2)}</span>
+                        <span className="text-lg font-bold tabular-nums">{Math.round(balance)}</span>
                     </div>
                 </div>
 
@@ -57,7 +57,7 @@ export default function MyPurchases({ purchases, balance }: Props) {
                                         key={purchase.id}
                                         className="rounded-lg border border-border/50 p-4"
                                     >
-                                        <div className="flex items-start justify-between">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <Package className="text-muted-foreground size-4" />
@@ -73,16 +73,16 @@ export default function MyPurchases({ purchases, balance }: Props) {
                                                     {new Date(purchase.created_at).toLocaleString()}
                                                 </p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <div className="flex items-center gap-1">
                                                     <Coins className="size-3.5 text-amber-500" />
                                                     <span className="text-sm font-semibold tabular-nums">
-                                                        {parseFloat(purchase.total_price).toFixed(2)}
+                                                        {Math.round(parseFloat(purchase.total_price))}
                                                     </span>
                                                 </div>
                                                 {parseFloat(purchase.discount_amount) > 0 && (
                                                     <Badge variant="outline" className="text-xs text-green-600">
-                                                        -{parseFloat(purchase.discount_amount).toFixed(2)}
+                                                        -{Math.round(parseFloat(purchase.discount_amount))}
                                                     </Badge>
                                                 )}
                                                 <Badge

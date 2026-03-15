@@ -98,15 +98,24 @@ class MoneyDepositManager
     {
         $resultsData = $this->readJsonFile($this->resultsPath, ['version' => 1, 'updated_at' => '', 'results' => []]);
 
-        // Check for a real Lua result first (only show recent results — within 60 seconds)
-        $recentCutoff = time() - 60;
-        $last = null;
-        foreach ($resultsData['results'] as $result) {
-            if ($result['username'] !== $username) {
+        // Only show results that match a recent request (created within the last 5 minutes).
+        // This avoids timezone mismatch between Lua and PHP timestamps.
+        $requestsData = $this->readJsonFile($this->requestsPath, ['version' => 1, 'updated_at' => '', 'requests' => []]);
+        $recentRequestIds = [];
+        $fiveMinutesAgo = time() - 300;
+        foreach ($requestsData['requests'] as $request) {
+            if ($request['username'] !== $username) {
                 continue;
             }
-            $processedAt = strtotime($result['processed_at'] ?? '');
-            if ($processedAt && $processedAt > $recentCutoff) {
+            $createdAt = strtotime($request['created_at'] ?? '');
+            if ($createdAt && $createdAt > $fiveMinutesAgo) {
+                $recentRequestIds[$request['id']] = true;
+            }
+        }
+
+        $last = null;
+        foreach ($resultsData['results'] as $result) {
+            if ($result['username'] === $username && isset($recentRequestIds[$result['id']])) {
                 $last = $result;
             }
         }

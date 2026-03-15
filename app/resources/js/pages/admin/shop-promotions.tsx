@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, ToggleLeft, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Power, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem } from '@/types';
@@ -42,6 +49,14 @@ function getPromotionStatus(promo: ShopPromotion): { label: string; variant: 'de
     if (new Date(promo.starts_at) > now) return { label: 'Scheduled', variant: 'outline' };
     if (promo.ends_at && new Date(promo.ends_at) < now) return { label: 'Expired', variant: 'secondary' };
     return { label: 'Active', variant: 'default' };
+}
+
+function formatShortDate(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
 }
 
 export default function ShopPromotions({ promotions }: Props) {
@@ -165,54 +180,98 @@ export default function ShopPromotions({ promotions }: Props) {
                     </CardHeader>
                     <CardContent>
                         {promotions.length > 0 ? (
-                            <div className="space-y-2">
-                                {promotions.map((promo) => {
-                                    const status = getPromotionStatus(promo);
-                                    return (
-                                        <div
-                                            key={promo.id}
-                                            className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium">{promo.name}</span>
-                                                        {promo.code && (
-                                                            <Badge variant="outline" className="font-mono text-xs">
-                                                                {promo.code}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-muted-foreground text-xs">
-                                                        {promo.type === 'percentage'
-                                                            ? `${parseFloat(promo.value)}% off`
-                                                            : `${parseFloat(promo.value)} off`}
-                                                        {' '}
-                                                        &middot; Applies to: {promo.applies_to}
-                                                        {' '}
-                                                        &middot; Used: {promo.usage_count}
-                                                        {promo.usage_limit !== null ? `/${promo.usage_limit}` : ''}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant={status.variant} className="text-xs">
-                                                    {status.label}
-                                                </Badge>
-                                                <Button variant="ghost" size="sm" onClick={() => handleToggle(promo)}>
-                                                    <ToggleLeft className="size-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => openEdit(promo)}>
-                                                    Edit
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleDelete(promo)}>
-                                                    <Trash2 className="size-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Code</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Value</TableHead>
+                                        <TableHead>Applies To</TableHead>
+                                        <TableHead>Usage</TableHead>
+                                        <TableHead>Date Range</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="w-[50px]">
+                                            <span className="sr-only">Actions</span>
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {promotions.map((promo) => {
+                                        const status = getPromotionStatus(promo);
+                                        return (
+                                            <TableRow key={promo.id}>
+                                                <TableCell className="font-medium">
+                                                    {promo.name}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {promo.code ? (
+                                                        <Badge variant="outline" className="font-mono text-xs">
+                                                            {promo.code}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">&mdash;</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="capitalize">
+                                                    {promo.type.replace('_', ' ')}
+                                                </TableCell>
+                                                <TableCell className="tabular-nums">
+                                                    {promo.type === 'percentage'
+                                                        ? `${parseFloat(promo.value)}%`
+                                                        : `${Math.round(parseFloat(promo.value))}`}
+                                                </TableCell>
+                                                <TableCell className="capitalize">
+                                                    {promo.applies_to}
+                                                </TableCell>
+                                                <TableCell className="tabular-nums">
+                                                    {promo.usage_count} / {promo.usage_limit || '\u221E'}
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">
+                                                    <div>{formatShortDate(promo.starts_at)}</div>
+                                                    {promo.ends_at ? (
+                                                        <div>{formatShortDate(promo.ends_at)}</div>
+                                                    ) : (
+                                                        <div>No end</div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={status.variant} className="text-xs">
+                                                        {status.label}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="size-8">
+                                                                <MoreHorizontal className="size-4" />
+                                                                <span className="sr-only">Actions</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleToggle(promo)}>
+                                                                <Power className="mr-2 size-4" />
+                                                                {promo.is_active ? 'Deactivate' : 'Activate'}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => openEdit(promo)}>
+                                                                <Pencil className="mr-2 size-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                variant="destructive"
+                                                                onClick={() => handleDelete(promo)}
+                                                            >
+                                                                <Trash2 className="mr-2 size-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
                         ) : (
                             <p className="text-muted-foreground py-8 text-center">
                                 No promotions yet.

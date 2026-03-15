@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
-import { Package, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,11 +21,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { fetchAction } from '@/lib/fetch-action';
 import type { BreadcrumbItem } from '@/types';
 import type { ShopBundle, ShopItem } from '@/types/server';
+
+function coin(value: string | number): number {
+    return Math.round(typeof value === 'string' ? parseFloat(value) : value);
+}
 
 type Props = {
     bundles: ShopBundle[];
@@ -47,15 +52,27 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [price, setPrice] = useState('');
+    const [discountPercent, setDiscountPercent] = useState('10');
     const [maxPerPlayer, setMaxPerPlayer] = useState('');
     const [bundleItems, setBundleItems] = useState<BundleItemEntry[]>([]);
+
+    const itemsTotal = useMemo(() => {
+        return bundleItems.reduce((sum, entry) => {
+            const item = shopItems.find((i) => i.id === entry.shop_item_id);
+            return sum + (item ? parseFloat(item.price) * entry.quantity : 0);
+        }, 0);
+    }, [bundleItems, shopItems]);
+
+    const calculatedPrice = useMemo(() => {
+        const discount = parseFloat(discountPercent) || 0;
+        return Math.round(itemsTotal * (1 - discount / 100));
+    }, [itemsTotal, discountPercent]);
 
     function openCreate() {
         setEditBundle(null);
         setName('');
         setDescription('');
-        setPrice('');
+        setDiscountPercent('10');
         setMaxPerPlayer('');
         setBundleItems([{ shop_item_id: '', quantity: 1 }]);
         setDialogOpen(true);
@@ -65,7 +82,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
         setEditBundle(bundle);
         setName(bundle.name);
         setDescription(bundle.description || '');
-        setPrice(bundle.price);
+        setDiscountPercent(bundle.discount_percent?.toString() || '10');
         setMaxPerPlayer(bundle.max_per_player?.toString() || '');
         setBundleItems(
             bundle.items.map((i) => ({
@@ -95,7 +112,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
         const data: Record<string, unknown> = {
             name,
             description: description || null,
-            price: parseFloat(price),
+            discount_percent: parseFloat(discountPercent) || 0,
             max_per_player: maxPerPlayer ? parseInt(maxPerPlayer) : null,
             items: bundleItems.filter((i) => i.shop_item_id),
         };
@@ -125,6 +142,10 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
         router.reload();
     }
 
+    function getBundleItemsTotal(bundle: ShopBundle): number {
+        return bundle.items.reduce((sum, item) => sum + coin(item.price) * item.pivot.quantity, 0);
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Shop Bundles" />
@@ -149,64 +170,91 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                     </CardHeader>
                     <CardContent>
                         {bundles.length > 0 ? (
-                            <div className="space-y-3">
-                                {bundles.map((bundle) => (
-                                    <div
-                                        key={bundle.id}
-                                        className="rounded-lg border border-border/50 p-4"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">{bundle.name}</span>
-                                                    <Badge variant="secondary" className="tabular-nums text-xs">
-                                                        {parseFloat(bundle.price).toFixed(2)}
-                                                    </Badge>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Items</TableHead>
+                                        <TableHead className="text-center">Discount %</TableHead>
+                                        <TableHead className="text-right">Price</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {bundles.map((bundle) => {
+                                        const total = getBundleItemsTotal(bundle);
+                                        const saving = total - coin(bundle.price);
+                                        return (
+                                            <TableRow key={bundle.id}>
+                                                <TableCell>
+                                                    <div>
+                                                        <span className="font-medium">{bundle.name}</span>
+                                                        {bundle.description && (
+                                                            <p className="text-muted-foreground max-w-[250px] truncate text-xs">
+                                                                {bundle.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex -space-x-2">
+                                                        {bundle.items.slice(0, 4).map((item) => (
+                                                            <img
+                                                                key={item.id}
+                                                                src={item.icon || '/images/items/placeholder.svg'}
+                                                                alt={item.name}
+                                                                width={24}
+                                                                height={24}
+                                                                className="size-6 rounded-full border-2 border-background bg-muted object-contain p-0.5"
+                                                                title={`${item.name} x${item.pivot.quantity}`}
+                                                            />
+                                                        ))}
+                                                        {bundle.items.length > 4 && (
+                                                            <div className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium">
+                                                                +{bundle.items.length - 4}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {parseFloat(bundle.discount_percent ?? '0')}%
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <span className="font-medium tabular-nums">
+                                                            {coin(bundle.price)}
+                                                        </span>
+                                                        {saving > 0 && (
+                                                            <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400">
+                                                                -{saving}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
                                                     <Badge
                                                         variant={bundle.is_active ? 'default' : 'destructive'}
                                                         className="text-xs"
                                                     >
                                                         {bundle.is_active ? 'Active' : 'Inactive'}
                                                     </Badge>
-                                                </div>
-                                                {bundle.description && (
-                                                    <p className="text-muted-foreground mt-1 text-sm">
-                                                        {bundle.description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <Button variant="ghost" size="sm" onClick={() => openEdit(bundle)}>
-                                                    Edit
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleDelete(bundle)}>
-                                                    <Trash2 className="size-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            {bundle.items.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    className="flex items-center gap-2 rounded-md bg-muted px-2 py-1 text-xs"
-                                                >
-                                                    <img
-                                                        src={item.icon || '/images/items/placeholder.svg'}
-                                                        alt={item.name}
-                                                        width={16}
-                                                        height={16}
-                                                        className="rounded object-contain"
-                                                    />
-                                                    <span>{item.name}</span>
-                                                    <Badge variant="outline" className="text-xs">
-                                                        x{item.pivot.quantity}
-                                                    </Badge>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button variant="ghost" size="sm" onClick={() => openEdit(bundle)}>
+                                                            Edit
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => handleDelete(bundle)}>
+                                                            <Trash2 className="size-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
                         ) : (
                             <p className="text-muted-foreground py-8 text-center">
                                 No bundles yet. Create one to get started.
@@ -235,13 +283,14 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Price</Label>
+                                <Label>Discount %</Label>
                                 <Input
                                     type="number"
-                                    step="0.01"
+                                    step="1"
                                     min={0}
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
+                                    max={99}
+                                    value={discountPercent}
+                                    onChange={(e) => setDiscountPercent(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -255,6 +304,22 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                                 />
                             </div>
                         </div>
+                        {itemsTotal > 0 && (
+                            <div className="rounded-md bg-muted p-3 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Items total:</span>
+                                    <span className="tabular-nums">{Math.round(itemsTotal)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Discount ({discountPercent || '0'}%):</span>
+                                    <span className="tabular-nums text-green-600">-{Math.round(itemsTotal) - calculatedPrice}</span>
+                                </div>
+                                <div className="mt-1 flex justify-between border-t pt-1 font-medium">
+                                    <span>Bundle price:</span>
+                                    <span className="tabular-nums">{calculatedPrice}</span>
+                                </div>
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label>Bundle Items</Label>
@@ -275,7 +340,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                                         <SelectContent>
                                             {shopItems.map((si) => (
                                                 <SelectItem key={si.id} value={si.id}>
-                                                    {si.name}
+                                                    {si.name} ({coin(si.price)})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -301,7 +366,7 @@ export default function ShopBundles({ bundles, shopItems }: Props) {
                             Cancel
                         </Button>
                         <Button
-                            disabled={!name || !price || bundleItems.filter((i) => i.shop_item_id).length === 0 || loading}
+                            disabled={!name || bundleItems.filter((i) => i.shop_item_id).length === 0 || loading}
                             onClick={handleSave}
                         >
                             {editBundle ? 'Update' : 'Create'}

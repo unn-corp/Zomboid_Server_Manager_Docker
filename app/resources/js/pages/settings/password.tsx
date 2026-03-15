@@ -34,7 +34,7 @@ export default function Password() {
                     <Heading
                         variant="small"
                         title="Update password"
-                        description="Ensure your account is using a long, random password to stay secure"
+                        description="This changes both your web login and game server password"
                     />
 
                     <Form

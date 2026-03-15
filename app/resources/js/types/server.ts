@@ -346,6 +346,7 @@ export type ShopBundle = {
     slug: string;
     description: string | null;
     price: string;
+    discount_percent?: string;
     is_active: boolean;
     is_featured: boolean;
     max_per_player: number | null;

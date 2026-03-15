@@ -17,6 +17,7 @@ class ShopBundle extends Model
         'slug',
         'description',
         'price',
+        'discount_percent',
         'is_active',
         'is_featured',
         'max_per_player',
@@ -27,10 +28,30 @@ class ShopBundle extends Model
     {
         return [
             'price' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'metadata' => 'array',
         ];
+    }
+
+    /**
+     * Calculate the bundle price from item prices and discount.
+     */
+    public function calculatePrice(): float
+    {
+        $this->loadMissing('items');
+        $itemsTotal = $this->items->sum(fn ($item) => (float) $item->price * $item->pivot->quantity);
+
+        return round($itemsTotal * (1 - (float) $this->discount_percent / 100), 2);
+    }
+
+    /**
+     * Recalculate and save the price.
+     */
+    public function recalculatePrice(): void
+    {
+        $this->update(['price' => $this->calculatePrice()]);
     }
 
     /**

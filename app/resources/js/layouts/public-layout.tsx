@@ -1,10 +1,76 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Skull } from 'lucide-react';
-import type { PropsWithChildren } from 'react';
+import { Menu, Skull } from 'lucide-react';
+import { useState, type PropsWithChildren } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { login, register } from '@/routes';
 
-export default function PublicLayout({ children }: PropsWithChildren) {
+const adminRoles = ['super_admin', 'admin', 'moderator'];
+
+function NavLinks({ className, onClick }: { className?: string; onClick?: () => void }) {
     const { auth } = usePage().props;
+    const isAdmin = auth.user && adminRoles.includes((auth.user as { role: string }).role);
+
+    return (
+        <nav className={className}>
+            <Link
+                href="/status"
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={onClick}
+            >
+                Server Status
+            </Link>
+            <Link
+                href="/rankings"
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={onClick}
+            >
+                Rankings
+            </Link>
+            <Link
+                href="/shop"
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={onClick}
+            >
+                Shop
+            </Link>
+            {auth.user ? (
+                <Link
+                    href={isAdmin ? '/dashboard' : '/portal'}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    onClick={onClick}
+                >
+                    {isAdmin ? 'Dashboard' : 'My Account'}
+                </Link>
+            ) : (
+                <>
+                    <Link
+                        href={login()}
+                        className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                        onClick={onClick}
+                    >
+                        Log in
+                    </Link>
+                    <Link
+                        href={register()}
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        onClick={onClick}
+                    >
+                        Register
+                    </Link>
+                </>
+            )}
+        </nav>
+    );
+}
+
+export default function PublicLayout({ children }: PropsWithChildren) {
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-background">
@@ -14,51 +80,40 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         <Skull className="size-6" />
                         <span className="text-lg font-semibold tracking-tight">Zomboid Manager</span>
                     </Link>
-                    <nav className="flex items-center gap-3">
-                        <Link
-                            href="/status"
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                        >
-                            Server Status
-                        </Link>
-                        <Link
-                            href="/rankings"
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                        >
-                            Rankings
-                        </Link>
-                        <Link
-                            href="/shop"
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                        >
-                            Shop
-                        </Link>
-                        {auth.user ? (
-                            <Link
-                                href="/dashboard"
-                                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                            >
-                                Dashboard
-                            </Link>
-                        ) : (
-                            <>
-                                <Link
-                                    href={login()}
-                                    className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                                >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={register()}
-                                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                                >
-                                    Register
-                                </Link>
-                            </>
-                        )}
-                    </nav>
+
+                    {/* Desktop nav */}
+                    <NavLinks className="hidden items-center gap-3 md:flex" />
+
+                    {/* Mobile hamburger */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="md:hidden"
+                        onClick={() => setMobileOpen(true)}
+                    >
+                        <Menu className="size-5" />
+                        <span className="sr-only">Menu</span>
+                    </Button>
                 </div>
             </header>
+
+            {/* Mobile slide-out menu */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetContent side="right" className="w-[280px]">
+                    <SheetHeader>
+                        <SheetTitle>
+                            <Link href="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+                                <Skull className="size-5" />
+                                <span className="font-semibold">Zomboid Manager</span>
+                            </Link>
+                        </SheetTitle>
+                    </SheetHeader>
+                    <NavLinks
+                        className="flex flex-col gap-1 px-4"
+                        onClick={() => setMobileOpen(false)}
+                    />
+                </SheetContent>
+            </Sheet>
 
             {children}
 

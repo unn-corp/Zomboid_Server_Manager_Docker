@@ -117,7 +117,7 @@ export default function Portal({ pzAccount, hasEmail, emailVerified, playerPosit
                             )}
                         </div>
 
-                        <div className="flex gap-3 pt-2">
+                        <div className="flex flex-wrap gap-3 pt-2">
                             <Button asChild variant="outline" size="sm">
                                 <Link href={edit()}>Edit Profile</Link>
                             </Button>
@@ -125,6 +125,9 @@ export default function Portal({ pzAccount, hasEmail, emailVerified, playerPosit
                                 <Link href="/settings/password">Change Password</Link>
                             </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                            Changing your password updates both web login and game server password.
+                        </p>
 
                         {!hasEmail && (
                             <p className="text-xs text-muted-foreground">

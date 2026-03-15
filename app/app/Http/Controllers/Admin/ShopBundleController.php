@@ -63,7 +63,8 @@ class ShopBundleController extends Controller
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']).'-'.Str::random(6),
             'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
+            'price' => 0,
+            'discount_percent' => $validated['discount_percent'] ?? 10,
             'is_featured' => $validated['is_featured'] ?? false,
             'max_per_player' => $validated['max_per_player'] ?? null,
         ]);
@@ -71,6 +72,8 @@ class ShopBundleController extends Controller
         foreach ($validated['items'] as $item) {
             $bundle->items()->attach($item['shop_item_id'], ['id' => Str::uuid(), 'quantity' => $item['quantity']]);
         }
+
+        $bundle->recalculatePrice();
 
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',
@@ -93,7 +96,7 @@ class ShopBundleController extends Controller
         $bundle->update([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
+            'discount_percent' => $validated['discount_percent'] ?? $bundle->discount_percent,
             'is_featured' => $validated['is_featured'] ?? false,
             'max_per_player' => $validated['max_per_player'] ?? null,
             'is_active' => $validated['is_active'] ?? $bundle->is_active,
@@ -105,6 +108,8 @@ class ShopBundleController extends Controller
             $syncData[$item['shop_item_id']] = ['id' => Str::uuid(), 'quantity' => $item['quantity']];
         }
         $bundle->items()->sync($syncData);
+
+        $bundle->recalculatePrice();
 
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',
