@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { formatDateTime } from '@/lib/dates';
 import {
     AlertTriangle,
     Check,
@@ -459,7 +460,7 @@ export default function SafeZones({ config, violations, mapConfig, hasTiles }: P
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-xs">
-                                                {new Date(v.occurred_at).toLocaleString()}
+                                                {formatDateTime(v.occurred_at)}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge

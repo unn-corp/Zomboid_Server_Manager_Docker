@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Coins, Package, Search, ShoppingBag } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { useState } from 'react';
 import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
@@ -266,7 +267,7 @@ export default function ShopPurchases({ purchases, stats, filters }: Props) {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                                                {new Date(purchase.created_at).toLocaleString()}
+                                                {formatDateTime(purchase.created_at)}
                                             </TableCell>
                                         </TableRow>
                                     ))}

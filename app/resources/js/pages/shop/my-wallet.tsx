@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { ArrowDownLeft, ArrowUpRight, Coins, RotateCcw } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
@@ -79,7 +80,7 @@ export default function MyWallet({ balance, transactions }: Props) {
                                                     <p className="text-muted-foreground text-xs">{tx.description}</p>
                                                 )}
                                                 <p className="text-muted-foreground text-xs">
-                                                    {new Date(tx.created_at).toLocaleString()}
+                                                    {formatDateTime(tx.created_at)}
                                                 </p>
                                             </div>
                                         </div>

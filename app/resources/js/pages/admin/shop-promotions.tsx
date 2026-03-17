@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { MoreHorizontal, Pencil, Plus, Power, Trash2 } from 'lucide-react';
+import { formatShortDate } from '@/lib/dates';
 import { useMemo, useState } from 'react';
 import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
@@ -56,13 +57,6 @@ function getPromotionStatus(promo: ShopPromotion): { label: StatusLabel; variant
     return { label: 'Active', variant: 'default' };
 }
 
-function formatShortDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
 
 type SortKey = 'name' | 'type' | 'value' | 'usage_count' | 'starts_at' | 'status';
 

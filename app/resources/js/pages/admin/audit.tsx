@@ -1,5 +1,6 @@
 import { Deferred, Head, router } from '@inertiajs/react';
 import { ChevronDown, ChevronRight, Filter, ScrollText } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { Fragment, useState } from 'react';
 import { SortableHeader } from '@/components/sortable-header';
 import { Badge } from '@/components/ui/badge';
@@ -235,7 +236,7 @@ export default function Audit({
                                                         </TableCell>
                                                         <TableCell>
                                                             {entry.created_at
-                                                                ? new Date(entry.created_at).toLocaleString()
+                                                                ? formatDateTime(entry.created_at)
                                                                 : ''}
                                                         </TableCell>
                                                         <TableCell className="hidden md:table-cell">

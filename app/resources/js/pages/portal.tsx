@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { formatDateTime } from '@/lib/dates';
 import PzMap from '@/components/pz-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,7 @@ export default function Portal({ pzAccount, hasEmail, emailVerified, playerPosit
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">Last Synced</span>
                                 <span className="text-sm text-muted-foreground">
-                                    {new Date(pzAccount.syncedAt).toLocaleString()}
+                                    {formatDateTime(pzAccount.syncedAt)}
                                 </span>
                             </div>
                         )}

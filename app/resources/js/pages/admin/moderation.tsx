@@ -1,5 +1,6 @@
 import { Deferred, Head, router } from '@inertiajs/react';
 import { Ban, Crosshair, Filter, MapPin, UserX } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { useCallback, useRef, useState } from 'react';
 import type L from 'leaflet';
 import PzMap from '@/components/pz-map';
@@ -313,7 +314,7 @@ export default function Moderation({ mapConfig, hasTiles, filters, events }: Pro
                                             >
                                                 <TableCell className="text-xs">
                                                     {event.created_at
-                                                        ? new Date(event.created_at).toLocaleString()
+                                                        ? formatDateTime(event.created_at)
                                                         : ''}
                                                 </TableCell>
                                                 <TableCell>

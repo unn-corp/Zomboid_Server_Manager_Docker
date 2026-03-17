@@ -1,4 +1,5 @@
 import { Deferred, Head, Link, router, usePoll } from '@inertiajs/react';
+import { formatDate, formatDateTime, formatTime } from '@/lib/dates';
 import {
     Archive,
     ArrowUpCircle,
@@ -150,7 +151,7 @@ export default function Dashboard({
                             <div className="flex min-w-0 flex-wrap items-center gap-1">
                                 {auto_restart.schedule.map((time) => {
                                     const isNext = auto_restart.next_restart_at &&
-                                        new Date(auto_restart.next_restart_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) === time;
+                                        formatTime(new Date(auto_restart.next_restart_at)).slice(0, 5) === time;
                                     return (
                                         <Badge
                                             key={time}
@@ -372,7 +373,7 @@ export default function Dashboard({
                             <CardContent>
                                 <div className="truncate text-3xl font-bold">
                                     {backup_summary?.last_backup
-                                        ? new Date(backup_summary.last_backup.created_at).toLocaleDateString()
+                                        ? formatDate(backup_summary.last_backup.created_at)
                                         : 'Never'}
                                 </div>
                                 {backup_summary?.last_backup && (
@@ -568,7 +569,7 @@ export default function Dashboard({
                                                     <p className="mt-0.5 text-xs text-muted-foreground">
                                                         {entry.actor}
                                                         {entry.created_at && (
-                                                            <> &middot; {new Date(entry.created_at).toLocaleString()}</>
+                                                            <> &middot; {formatDateTime(entry.created_at)}</>
                                                         )}
                                                     </p>
                                                 </div>

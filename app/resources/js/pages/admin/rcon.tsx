@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Send, Terminal } from 'lucide-react';
+import { formatTime } from '@/lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { toast } from 'sonner';
@@ -37,7 +38,7 @@ export default function Rcon() {
     }, [history]);
 
     function addEntry(type: HistoryEntry['type'], text: string) {
-        setHistory((prev) => [...prev, { type, text, timestamp: new Date().toLocaleTimeString() }]);
+        setHistory((prev) => [...prev, { type, text, timestamp: formatTime() }]);
     }
 
     function executeCommand() {

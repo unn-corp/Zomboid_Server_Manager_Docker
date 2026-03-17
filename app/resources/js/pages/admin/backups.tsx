@@ -1,5 +1,6 @@
 import { Deferred, Head, router } from '@inertiajs/react';
 import { AlertTriangle, Archive, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { useMemo, useState } from 'react';
 import { SortableHeader } from '@/components/sortable-header';
 import { useServerSort } from '@/hooks/use-server-sort';
@@ -350,7 +351,7 @@ export default function Backups({ backups, current_version, current_branch, filt
                                                     {backup.size_human}
                                                 </TableCell>
                                                 <TableCell className="hidden md:table-cell">
-                                                    {new Date(backup.created_at).toLocaleString()}
+                                                    {formatDateTime(backup.created_at)}
                                                 </TableCell>
                                                 <TableCell className="hidden lg:table-cell">
                                                     <span className="text-muted-foreground">{backup.notes ?? '-'}</span>

@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Coins, Package } from 'lucide-react';
+import { formatDateTime } from '@/lib/dates';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
@@ -70,7 +71,7 @@ export default function MyPurchases({ purchases, balance }: Props) {
                                                     </span>
                                                 </div>
                                                 <p className="text-muted-foreground mt-1 text-xs">
-                                                    {new Date(purchase.created_at).toLocaleString()}
+                                                    {formatDateTime(purchase.created_at)}
                                                 </p>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2">
