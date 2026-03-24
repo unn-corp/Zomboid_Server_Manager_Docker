@@ -70,6 +70,7 @@ services:
       - map-tiles:/map-tiles
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-zomboid}
@@ -92,6 +93,7 @@ services:
       APP_URL: ${APP_URL:-http://localhost:8000}
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:-}
       TZ: ${TZ:-UTC}
     networks:
       - zomboid-net
@@ -118,6 +120,7 @@ services:
       - map-tiles:/map-tiles
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-zomboid}
@@ -135,6 +138,7 @@ services:
       LUA_BRIDGE_PATH: /lua-bridge
       PZ_MAP_TILES_PATH: /map-tiles
       APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY:-}
       TZ: ${TZ:-UTC}
     networks:
       - zomboid-net
