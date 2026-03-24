@@ -23,17 +23,17 @@ done
 # is populated by configure-server.sh — do NOT delete it here.
 
 if [ -f "$CONFIGURE_SCRIPT" ]; then
-    if grep -q "bash $CONFIGURE_SCRIPT" /home/steam/run_server.sh; then
-        echo "[entrypoint] run_server.sh already patched, skipping"
-    else
-        sed -i '/^\s*start_server\b/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh
+    # Remove ALL previous insertions first (clean slate on every boot)
+    sed -i "\|bash $CONFIGURE_SCRIPT|d" /home/steam/run_server.sh
 
-        if grep -q "bash $CONFIGURE_SCRIPT" /home/steam/run_server.sh; then
-            echo "[entrypoint] Patched run_server.sh to run configure-server.sh before start"
-        else
-            echo "[entrypoint] WARNING: Could not patch run_server.sh — running configure-server.sh directly"
-            bash "$CONFIGURE_SCRIPT"
-        fi
+    # Insert exactly once before start_server
+    sed -i '/^\s*start_server\b/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh
+
+    if grep -q "bash $CONFIGURE_SCRIPT" /home/steam/run_server.sh; then
+        echo "[entrypoint] Patched run_server.sh (1 insertion)"
+    else
+        echo "[entrypoint] WARNING: Could not patch run_server.sh — running configure-server.sh directly"
+        bash "$CONFIGURE_SCRIPT"
     fi
 fi
 
