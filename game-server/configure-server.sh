@@ -5,7 +5,7 @@
 
 set -e
 
-SERVER_NAME="${SERVERNAME:-ZomboidServer}"
+SERVER_NAME="${SERVER_NAME:-${SERVERNAME:-ZomboidServer}}"
 INI_DIR="/home/steam/Zomboid/Server"
 INI_FILE="${INI_DIR}/${SERVER_NAME}.ini"
 SANDBOX_FILE="${INI_DIR}/${SERVER_NAME}_SandboxVars.lua"
