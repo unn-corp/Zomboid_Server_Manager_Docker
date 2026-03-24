@@ -34,6 +34,9 @@ services:
       - "5173:5173"
     volumes:
       - ./app:/var/www/html
+      - app-vendor:/var/www/html/vendor
+      - app-node-modules:/var/www/html/node_modules
+      - app-build:/var/www/html/public/build
       - zomboid-data:/pz-data
       - zomboid-server:/pz-server:ro
       - backup-data:/backups
@@ -75,6 +78,7 @@ services:
     command: php artisan queue:work redis --tries=3 --timeout=600 --sleep=3
     volumes:
       - ./app:/var/www/html
+      - app-vendor:/var/www/html/vendor
       - zomboid-data:/pz-data
       - zomboid-server:/pz-server:ro
       - backup-data:/backups
@@ -132,9 +136,11 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: /bin/sh -c 'exec redis-server --appendonly yes --requirepass "$REDIS_PASSWORD"'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", 'redis-cli -a "$${REDIS_PASSWORD}" ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -158,6 +164,12 @@ networks:
 # Volumes
 # -----------------------------------------------------------------------------
 volumes:
+  app-vendor:
+    name: pz-app-vendor
+  app-node-modules:
+    name: pz-app-node-modules
+  app-build:
+    name: pz-app-build
   zomboid-server:
     name: pz-server-files
   zomboid-data:
