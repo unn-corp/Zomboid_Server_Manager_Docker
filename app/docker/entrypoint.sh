@@ -64,6 +64,21 @@ if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     echo "[entrypoint] Add this to your .env to persist across restarts."
 fi
 
+# ── Sync build assets into persistent volumes ─────────────────────────
+# Named volumes (app-build, app-vendor, app-node-modules) shadow the
+# Docker image contents after the first deploy. Copy fresh image assets
+# into them on every startup so new builds actually take effect.
+if [ -d /var/www/html/public/build.image ]; then
+    rm -rf /var/www/html/public/build/*
+    cp -a /var/www/html/public/build.image/* /var/www/html/public/build/ 2>/dev/null || true
+    echo "[entrypoint] Synced frontend build assets into volume"
+fi
+if [ -d /var/www/html/vendor.image ]; then
+    rm -rf /var/www/html/vendor/*
+    cp -a /var/www/html/vendor.image/* /var/www/html/vendor/ 2>/dev/null || true
+    echo "[entrypoint] Synced vendor dependencies into volume"
+fi
+
 # ── Only run setup tasks for the main app (not queue worker) ─────────
 if echo "$@" | grep -q "supervisord"; then
 

@@ -62,6 +62,10 @@ RUN APP_KEY=base64:dGVtcG9yYXJ5LWJ1aWxkLWtleS1mb3ItZG9ja2VyMTIzNA== \
     DB_DATABASE=":memory:" \
     npm run build
 
+# Stash build + vendor so entrypoint can sync them into persistent volumes
+RUN cp -a public/build public/build.image \
+    && cp -a vendor vendor.image
+
 # Set permissions
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
