@@ -354,7 +354,7 @@ Five Docker services across two networks:
               │   UDP 16261-16262          TCP 8000              │
               │            │                  │                  │
               │   ┌────────▼────────┐  ┌──────▼──────────────┐  │
-              │   │  game-server    │  │  app                │  │
+              │   │  game-server    │  │  app                │  │Renegade-Master
   zomboid-net │   │  PZ Dedicated   │◄─│  Laravel + Nginx    │  │
    (bridge)   │   │  SteamCMD       │  │  React dashboard    │  │
               │   │                 │  │  Docker socket      │  │
@@ -862,5 +862,5 @@ Built for the Georgian Project Zomboid community
 
 The game server containers powering this project are built and maintained by the community:
 
-- **AMD64:** [renegademaster/zomboid-dedicated-server](https://github.com/renegademaster/zomboid-dedicated-server) by [@renegademaster](https://github.com/renegademaster)
+- **AMD64:** [Renegade-Master/zomboid-dedicated-server](https://github.com/Renegade-Master/zomboid-dedicated-server) by [@Renegade-Master](https://github.com/Renegade-Master)
 - **ARM64:** [joyfui/project-zomboid-server-docker-arm64](https://github.com/joyfui/project-zomboid-server-docker-arm64) by [@joyfui](https://github.com/joyfui)
