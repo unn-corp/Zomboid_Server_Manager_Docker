@@ -138,9 +138,9 @@ services:
       - redis-data:/data
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    command: /bin/sh -c 'exec redis-server --appendonly yes --requirepass "$REDIS_PASSWORD"'
+    command: /bin/sh -c 'set -- --appendonly yes; [ -n "$$REDIS_PASSWORD" ] && set -- "$$@" --requirepass "$$REDIS_PASSWORD"; exec redis-server "$$@"'
     healthcheck:
-      test: ["CMD-SHELL", 'redis-cli -a "$${REDIS_PASSWORD}" ping']
+      test: ["CMD-SHELL", 'if [ -n "$$REDIS_PASSWORD" ]; then REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping; else redis-cli ping; fi']
       interval: 10s
       timeout: 5s
       retries: 5
