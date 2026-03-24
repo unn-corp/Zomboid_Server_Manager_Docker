@@ -23,8 +23,15 @@ done
 # is populated by configure-server.sh — do NOT delete it here.
 
 if [ -f "$CONFIGURE_SCRIPT" ]; then
-    sed -i '/^start_server$/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh
-    echo "[entrypoint] Patched run_server.sh to run configure-server.sh before start"
+    # Match start_server with optional leading whitespace and trailing args/whitespace
+    sed -i '/^\s*start_server\b/i bash '"$CONFIGURE_SCRIPT" /home/steam/run_server.sh
+
+    if grep -q "bash $CONFIGURE_SCRIPT" /home/steam/run_server.sh; then
+        echo "[entrypoint] Patched run_server.sh to run configure-server.sh before start"
+    else
+        echo "[entrypoint] WARNING: Could not patch run_server.sh — running configure-server.sh directly"
+        bash "$CONFIGURE_SCRIPT"
+    fi
 fi
 
 # Branch override from shared volume (written by web UI)

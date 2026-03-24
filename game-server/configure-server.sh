@@ -52,7 +52,7 @@ apply_setting() {
 
     # Escape backslashes for sed replacement (B42 uses \ in mod IDs)
     local escaped_value
-    escaped_value=$(printf '%s' "$value" | sed 's/\\/\\\\/g')
+    escaped_value=$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/&/\\&/g')
 
     if grep -q "^${key}=" "$file" 2>/dev/null; then
         sed -i "s|^${key}=.*|${key}=${escaped_value}|" "$file"

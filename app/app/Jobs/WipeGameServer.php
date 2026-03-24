@@ -64,39 +64,28 @@ class WipeGameServer implements ShouldQueue
             ip: $this->ip,
         );
 
-        // 3. Delete save data + PZ internal backups (PZ auto-restores from these on startup)
+        // 3. Delete ALL save data, databases, and PZ internal backups
         $dataPath = config('zomboid.paths.data');
-        $serverName = config('zomboid.server_name', 'ZomboidServer');
-        $savePath = "{$dataPath}/Saves/Multiplayer/{$serverName}";
-        $startupBackups = "{$dataPath}/backups/startup";
-        $serverDb = "{$dataPath}/db/{$serverName}.db";
 
-        if (is_dir($savePath)) {
-            $deleteResult = Process::run(['rm', '-rf', $savePath]);
-
-            if ($deleteResult->successful()) {
-                Log::info('Save data deleted', ['path' => $savePath]);
-            } else {
-                Log::error('Failed to delete save data', [
-                    'path' => $savePath,
-                    'error' => $deleteResult->errorOutput(),
-                ]);
-            }
-        } else {
-            Log::info('Save directory does not exist, nothing to delete', ['path' => $savePath]);
+        // Remove all saves (every server name, every game mode)
+        $savesPath = "{$dataPath}/Saves";
+        if (is_dir($savesPath)) {
+            $deleteResult = Process::run(['rm', '-rf', $savesPath]);
+            Log::info('All save data deleted', ['path' => $savesPath, 'success' => $deleteResult->successful()]);
         }
 
-        // Remove PZ startup backups — PZ restores saves from these on boot
+        // Remove all server databases (player accounts, roles, config)
+        $dbPath = "{$dataPath}/db";
+        if (is_dir($dbPath)) {
+            $deleteResult = Process::run(['rm', '-rf', $dbPath]);
+            Log::info('All server databases deleted', ['path' => $dbPath, 'success' => $deleteResult->successful()]);
+        }
+
+        // Remove PZ startup backups — PZ auto-restores saves from these on boot
+        $startupBackups = "{$dataPath}/backups/startup";
         if (is_dir($startupBackups)) {
             $backupResult = Process::run(['rm', '-rf', $startupBackups]);
             Log::info('PZ startup backups deleted', ['success' => $backupResult->successful()]);
-        }
-
-        // Remove player account database so accounts are reset
-        if (file_exists($serverDb)) {
-            Process::run(['rm', '-f', $serverDb]);
-            Process::run(['rm', '-f', "{$serverDb}-shm", "{$serverDb}-wal"]);
-            Log::info('Server player database deleted', ['path' => $serverDb]);
         }
 
         // 4. Start server

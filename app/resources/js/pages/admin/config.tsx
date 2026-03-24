@@ -463,6 +463,7 @@ export default function Config({ server_config, sandbox_config, respawn_delay }:
                     <div className="relative w-full sm:w-72">
                         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
+                            autoComplete="off"
                             placeholder="Search settings..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
