@@ -1,4 +1,4 @@
-  services:
+services:
     game-server:
       image: renegademaster/zomboid-dedicated-server:latest
       container_name: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
@@ -69,14 +69,20 @@
         - lua-bridge:/lua-bridge
         - map-tiles:/map-tiles
         - /var/run/docker.sock:/var/run/docker.sock
-      env_file: ./app/.env
       environment:
         DB_HOST: ${DB_HOST:-db}
+        DB_PORT: 5432
+        DB_DATABASE: ${DB_DATABASE:-zomboid}
+        DB_USERNAME: ${DB_USERNAME:-zomboid}
+        DB_PASSWORD: ${DB_PASSWORD:-zomboid}
         REDIS_HOST: ${REDIS_HOST:-redis}
+        REDIS_PASSWORD: ${REDIS_PASSWORD:-}
         GAME_SERVER_CONTAINER_NAME: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
         PZ_DATA_PATH: /pz-data
         PZ_SERVER_PATH: /pz-server
         PZ_RCON_HOST: game-server
+        PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
+        PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-changeme}
         BACKUP_PATH: /backups
         LUA_BRIDGE_PATH: /lua-bridge
         PZ_MAP_TILES_PATH: /map-tiles
@@ -84,6 +90,9 @@
         ADMIN_EMAIL: ${ADMIN_EMAIL:-}
         ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
         APP_URL: ${APP_URL:-http://localhost:8000}
+        APP_ENV: ${APP_ENV:-production}
+        APP_DEBUG: ${APP_DEBUG:-false}
+        TZ: ${TZ:-UTC}
       networks:
         - zomboid-net
         - backend-net
@@ -108,17 +117,25 @@
         - lua-bridge:/lua-bridge
         - map-tiles:/map-tiles
         - /var/run/docker.sock:/var/run/docker.sock
-      env_file: ./app/.env
       environment:
         DB_HOST: ${DB_HOST:-db}
+        DB_PORT: 5432
+        DB_DATABASE: ${DB_DATABASE:-zomboid}
+        DB_USERNAME: ${DB_USERNAME:-zomboid}
+        DB_PASSWORD: ${DB_PASSWORD:-zomboid}
         REDIS_HOST: ${REDIS_HOST:-redis}
+        REDIS_PASSWORD: ${REDIS_PASSWORD:-}
         GAME_SERVER_CONTAINER_NAME: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
         PZ_DATA_PATH: /pz-data
         PZ_SERVER_PATH: /pz-server
         PZ_RCON_HOST: game-server
+        PZ_RCON_PORT: ${PZ_RCON_PORT:-27015}
+        PZ_RCON_PASSWORD: ${PZ_RCON_PASSWORD:-changeme}
         BACKUP_PATH: /backups
         LUA_BRIDGE_PATH: /lua-bridge
         PZ_MAP_TILES_PATH: /map-tiles
+        APP_ENV: ${APP_ENV:-production}
+        TZ: ${TZ:-UTC}
       networks:
         - zomboid-net
         - backend-net
