@@ -60,4 +60,15 @@ if [ -z "${MOD_WORKSHOP_IDS:-}" ]; then
     unset MOD_WORKSHOP_IDS
 fi
 
+# Snapshot current mod lines BEFORE the base image can wipe them.
+# configure-server.sh will restore these if the base image clears them.
+SERVER_NAME_VAL="${SERVER_NAME:-${SERVERNAME:-ZomboidServer}}"
+INI="/home/steam/Zomboid/Server/${SERVER_NAME_VAL}.ini"
+MOD_SNAPSHOT="/tmp/.mod_snapshot"
+if [ -f "$INI" ]; then
+    grep "^Mods=" "$INI" > "$MOD_SNAPSHOT" 2>/dev/null || true
+    grep "^WorkshopItems=" "$INI" >> "$MOD_SNAPSHOT" 2>/dev/null || true
+    echo "[entrypoint] Saved mod snapshot from INI ($(wc -l < "$MOD_SNAPSHOT") lines)"
+fi
+
 exec /home/steam/run_server.sh

@@ -82,25 +82,42 @@ apply_setting "AdminPassword"        "${PZ_ADMIN_PASSWORD:-admin}"  "$INI_FILE"
 apply_setting "RCONPort"             "${PZ_RCON_PORT:-${RCON_PORT:-27015}}"         "$INI_FILE"
 apply_setting "RCONPassword"         "${PZ_RCON_PASSWORD:-${RCON_PASSWORD:-changeme}}" "$INI_FILE"
 
-# Mods — only apply env vars if they are set AND the INI lines are currently empty.
-# This prevents overwriting mods added via the web UI panel.
-# To force env var mods, wipe the server first (which clears the INI).
+# Mods — restore from snapshot if the base image wiped them, otherwise preserve.
+# The entrypoint saves a snapshot of Mods=/WorkshopItems= BEFORE the base image runs.
+MOD_SNAPSHOT="/tmp/.mod_snapshot"
 CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" 2>/dev/null | sed 's/^Mods=//')
 CURRENT_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" 2>/dev/null | sed 's/^WorkshopItems=//')
+SNAPSHOT_MODS=""
+SNAPSHOT_WORKSHOP=""
 
-if [ -n "${PZ_MOD_IDS:-}" ] && [ -z "$CURRENT_MODS" ]; then
-    apply_setting "Mods"             "${PZ_MOD_IDS}"                "$INI_FILE"
+if [ -f "$MOD_SNAPSHOT" ]; then
+    SNAPSHOT_MODS=$(grep "^Mods=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^Mods=//')
+    SNAPSHOT_WORKSHOP=$(grep "^WorkshopItems=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^WorkshopItems=//')
+fi
+
+# If mods were in the snapshot but are now empty, the base image wiped them — restore.
+if [ -z "$CURRENT_MODS" ] && [ -n "$SNAPSHOT_MODS" ]; then
+    apply_setting "Mods" "$SNAPSHOT_MODS" "$INI_FILE"
+    echo "[configure-server] Restored Mods from snapshot (base image wiped them)"
+elif [ -z "$CURRENT_MODS" ] && [ -n "${PZ_MOD_IDS:-}" ]; then
+    apply_setting "Mods" "${PZ_MOD_IDS}" "$INI_FILE"
     echo "[configure-server] Applied PZ_MOD_IDS from env (INI was empty)"
 elif [ -n "$CURRENT_MODS" ]; then
     echo "[configure-server] Preserving existing Mods from INI: ${CURRENT_MODS:0:80}..."
 fi
 
-if [ -n "${PZ_WORKSHOP_IDS:-}" ] && [ -z "$CURRENT_WORKSHOP" ]; then
-    apply_setting "WorkshopItems"    "${PZ_WORKSHOP_IDS}"           "$INI_FILE"
+if [ -z "$CURRENT_WORKSHOP" ] && [ -n "$SNAPSHOT_WORKSHOP" ]; then
+    apply_setting "WorkshopItems" "$SNAPSHOT_WORKSHOP" "$INI_FILE"
+    echo "[configure-server] Restored WorkshopItems from snapshot (base image wiped them)"
+elif [ -z "$CURRENT_WORKSHOP" ] && [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
+    apply_setting "WorkshopItems" "${PZ_WORKSHOP_IDS}" "$INI_FILE"
     echo "[configure-server] Applied PZ_WORKSHOP_IDS from env (INI was empty)"
 elif [ -n "$CURRENT_WORKSHOP" ]; then
     echo "[configure-server] Preserving existing WorkshopItems from INI: ${CURRENT_WORKSHOP:0:80}..."
 fi
+
+# Clean up snapshot
+rm -f "$MOD_SNAPSHOT"
 
 # Disable Lua checksum — required for ZomboidManager mod.
 # Without this, PZ checksums mod Lua files and clients that don't have matching
