@@ -95,6 +95,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_KEY: ${APP_KEY:-}
+      API_KEY: ${API_KEY:-}
       SESSION_DRIVER: ${SESSION_DRIVER:-file}
       CACHE_STORE: ${CACHE_STORE:-database}
       TZ: ${TZ:-UTC}
