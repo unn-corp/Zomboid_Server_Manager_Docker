@@ -20,15 +20,19 @@ class ModController extends Controller
     public function index(): Response
     {
         $mods = [];
+        $iniPath = config('zomboid.paths.server_ini');
+        $iniExists = file_exists($iniPath);
 
         try {
-            $mods = $this->modManager->list(config('zomboid.paths.server_ini'));
+            $mods = $this->modManager->list($iniPath);
         } catch (\Throwable) {
             // Config not available
         }
 
         return Inertia::render('admin/mods', [
             'mods' => $mods,
+            'ini_file' => basename($iniPath),
+            'ini_exists' => $iniExists,
         ]);
     }
 

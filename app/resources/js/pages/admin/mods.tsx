@@ -24,7 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Mods', href: '/admin/mods' },
 ];
 
-export default function Mods({ mods }: { mods: ModEntry[] }) {
+export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[]; ini_file: string; ini_exists: boolean }) {
     const [showAdd, setShowAdd] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<ModEntry | null>(null);
     const [workshopId, setWorkshopId] = useState('');
@@ -71,9 +71,16 @@ export default function Mods({ mods }: { mods: ModEntry[] }) {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Mod Manager</h1>
-                        <p className="text-muted-foreground">
-                            {mods.length} mod{mods.length !== 1 ? 's' : ''} installed
-                        </p>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <span>{mods.length} mod{mods.length !== 1 ? 's' : ''} installed</span>
+                            <span>&middot;</span>
+                            <Badge variant={ini_exists ? 'outline' : 'destructive'} className="font-mono text-xs">
+                                {ini_file}
+                            </Badge>
+                            {!ini_exists && (
+                                <span className="text-xs text-destructive">INI not found</span>
+                            )}
+                        </div>
                     </div>
                     <Button onClick={() => setShowAdd(true)}>
                         <Plus className="mr-1.5 size-4" />
@@ -112,6 +119,7 @@ export default function Mods({ mods }: { mods: ModEntry[] }) {
                                         <TableHead className="w-[50px]">#</TableHead>
                                         <TableHead>Mod ID</TableHead>
                                         <TableHead className="hidden sm:table-cell">Workshop ID</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -125,6 +133,11 @@ export default function Mods({ mods }: { mods: ModEntry[] }) {
                                             <TableCell className="hidden sm:table-cell">
                                                 <Badge variant="secondary" className="text-xs">
                                                     {mod.workshop_id}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="hidden sm:table-cell">
+                                                <Badge variant="default" className="bg-green-600 text-xs hover:bg-green-600">
+                                                    In INI
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
