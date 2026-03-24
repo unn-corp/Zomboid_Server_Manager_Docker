@@ -82,12 +82,24 @@ apply_setting "AdminPassword"        "${PZ_ADMIN_PASSWORD:-admin}"  "$INI_FILE"
 apply_setting "RCONPort"             "${PZ_RCON_PORT:-${RCON_PORT:-27015}}"         "$INI_FILE"
 apply_setting "RCONPassword"         "${PZ_RCON_PASSWORD:-${RCON_PASSWORD:-changeme}}" "$INI_FILE"
 
-# Mods
-if [ -n "${PZ_MOD_IDS:-}" ]; then
+# Mods — only apply env vars if they are set AND the INI lines are currently empty.
+# This prevents overwriting mods added via the web UI panel.
+# To force env var mods, wipe the server first (which clears the INI).
+CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" 2>/dev/null | sed 's/^Mods=//')
+CURRENT_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" 2>/dev/null | sed 's/^WorkshopItems=//')
+
+if [ -n "${PZ_MOD_IDS:-}" ] && [ -z "$CURRENT_MODS" ]; then
     apply_setting "Mods"             "${PZ_MOD_IDS}"                "$INI_FILE"
+    echo "[configure-server] Applied PZ_MOD_IDS from env (INI was empty)"
+elif [ -n "$CURRENT_MODS" ]; then
+    echo "[configure-server] Preserving existing Mods from INI: ${CURRENT_MODS:0:80}..."
 fi
-if [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
+
+if [ -n "${PZ_WORKSHOP_IDS:-}" ] && [ -z "$CURRENT_WORKSHOP" ]; then
     apply_setting "WorkshopItems"    "${PZ_WORKSHOP_IDS}"           "$INI_FILE"
+    echo "[configure-server] Applied PZ_WORKSHOP_IDS from env (INI was empty)"
+elif [ -n "$CURRENT_WORKSHOP" ]; then
+    echo "[configure-server] Preserving existing WorkshopItems from INI: ${CURRENT_WORKSHOP:0:80}..."
 fi
 
 # Disable Lua checksum — required for ZomboidManager mod.
@@ -150,8 +162,13 @@ mkdir -p /home/steam/Zomboid/Lua/inventory
 echo "[configure-server] Lua bridge directories created"
 
 echo "[configure-server] Configuration applied:"
+echo "  INI: $INI_FILE"
 echo "  Port: ${PZ_GAME_PORT:-16261}/udp"
 echo "  RCON: ${PZ_RCON_PORT:-27015}/tcp"
 echo "  MaxPlayers: ${PZ_MAX_PLAYERS:-16}"
 echo "  Public: ${PZ_PUBLIC_SERVER:-true}"
+FINAL_MODS=$(grep "^Mods=" "$INI_FILE" | sed 's/^Mods=//')
+FINAL_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" | sed 's/^WorkshopItems=//')
+echo "  Mods: $FINAL_MODS"
+echo "  WorkshopItems: $FINAL_WORKSHOP"
 echo "[configure-server] Done."
