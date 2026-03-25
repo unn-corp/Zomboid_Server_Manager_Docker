@@ -555,6 +555,22 @@ export default function Config({ server_config, sandbox_config, respawn_delay }:
                     onSave={(settings) => saveConfig('/admin/config/sandbox', settings)}
                     onDirtyChange={setSandboxDirty}
                 />
+
+                {/* Static save button at bottom of page */}
+                <div className="flex items-center justify-between rounded-lg border bg-card p-4">
+                    <p className="text-sm text-muted-foreground">
+                        {totalDirty > 0
+                            ? `${totalDirty} unsaved change${totalDirty !== 1 ? 's' : ''} — save to apply`
+                            : 'All settings saved'}
+                    </p>
+                    <Button
+                        onClick={handleFloatingSave}
+                        disabled={saving || totalDirty === 0}
+                    >
+                        <Save className="mr-2 size-4" />
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
             </div>
 
             {/* Floating save button */}

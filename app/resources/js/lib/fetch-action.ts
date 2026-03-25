@@ -1,5 +1,27 @@
 import { toast } from 'sonner';
 
+/**
+ * Fetch a fresh CSRF token by hitting the Sanctum CSRF cookie endpoint,
+ * then reading the updated meta tag or XSRF cookie.
+ */
+async function refreshCsrfToken(): Promise<string | null> {
+    try {
+        await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
+        // Laravel refreshes the XSRF-TOKEN cookie — read it
+        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+        if (match) {
+            const token = decodeURIComponent(match[1]);
+            // Update the meta tag so future calls use the fresh token
+            const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]');
+            if (meta) meta.content = token;
+            return token;
+        }
+    } catch {
+        // Fall through
+    }
+    return null;
+}
+
 type FetchActionOptions = {
     method?: string;
     data?: Record<string, unknown>;
@@ -38,11 +60,24 @@ export async function fetchAction(
     }
 
     try {
-        const res = await fetch(url, {
+        let res = await fetch(url, {
             method: actualMethod,
             headers,
             body,
         });
+
+        // Handle expired CSRF token — refresh and retry once
+        if (res.status === 419) {
+            const freshToken = await refreshCsrfToken();
+            if (freshToken) {
+                headers['X-CSRF-TOKEN'] = freshToken;
+                res = await fetch(url, {
+                    method: actualMethod,
+                    headers,
+                    body,
+                });
+            }
+        }
 
         const json = await res.json().catch(() => ({}));
 
