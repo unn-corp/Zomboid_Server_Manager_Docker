@@ -146,6 +146,22 @@ class PlayerController extends Controller
             return response()->json(['error' => 'Failed: '.$e->getMessage()], 503);
         }
 
+        // Sync the PZ access level to the web portal role
+        $roleMap = [
+            'admin' => \App\Enums\UserRole::Admin,
+            'moderator' => \App\Enums\UserRole::Moderator,
+            'overseer' => \App\Enums\UserRole::Moderator,
+            'gm' => \App\Enums\UserRole::Moderator,
+            'observer' => \App\Enums\UserRole::Player,
+            'none' => \App\Enums\UserRole::Player,
+        ];
+
+        $user = \App\Models\User::where('username', $name)->first();
+        if ($user) {
+            $newRole = $roleMap[strtolower($level)] ?? \App\Enums\UserRole::Player;
+            $user->update(['role' => $newRole]);
+        }
+
         $this->auditLogger->log(
             actor: $request->user()->name ?? 'admin',
             action: 'player.setaccess',
