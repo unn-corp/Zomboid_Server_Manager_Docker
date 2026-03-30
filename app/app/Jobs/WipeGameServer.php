@@ -45,9 +45,9 @@ class WipeGameServer implements ShouldQueue
         // 2. Graceful shutdown via RCON, fallback to Docker stop
         try {
             $rcon->connect();
-            $rcon->command('save');
+            $rcon->command('/save');
             sleep(5);
-            $rcon->command('quit');
+            $rcon->command('/quit');
         } catch (\Throwable $e) {
             Log::warning('RCON unavailable during scheduled wipe, proceeding with Docker stop', [
                 'error' => $e->getMessage(),

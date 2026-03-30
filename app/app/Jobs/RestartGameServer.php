@@ -26,9 +26,9 @@ class RestartGameServer implements ShouldQueue
 
         try {
             $rcon->connect();
-            $rcon->command('save');
+            $rcon->command('/save');
             sleep(5);
-            $rcon->command('quit');
+            $rcon->command('/quit');
         } catch (\Throwable $e) {
             Log::warning('RCON unavailable during scheduled restart, proceeding with Docker restart', [
                 'error' => $e->getMessage(),

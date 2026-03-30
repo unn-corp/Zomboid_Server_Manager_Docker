@@ -1,7 +1,7 @@
 services:
   game-server:
     image: renegademaster/zomboid-dedicated-server:latest
-    container_name: ${GAME_SERVER_CONTAINER_NAME:-pz-game-server}
+    container_name: ${GAME_SERVER_CONTAINER_NAME:-${PROJECT_PREFIX:-pz}-game-server}
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/home/steam/amd64-entrypoint.sh"]
     ports:
@@ -50,7 +50,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    container_name: pz-app
+    container_name: ${PROJECT_PREFIX:-pz}-app
     restart: unless-stopped
     depends_on:
       db:
@@ -107,7 +107,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    container_name: pz-queue
+    container_name: ${PROJECT_PREFIX:-pz}-queue
     restart: unless-stopped
     depends_on:
       db:
@@ -151,7 +151,7 @@ services:
 
   db:
     image: postgres:16-alpine
-    container_name: pz-db
+    container_name: ${PROJECT_PREFIX:-pz}-db
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -170,7 +170,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: pz-redis
+    container_name: ${PROJECT_PREFIX:-pz}-redis
     restart: unless-stopped
     volumes:
       - redis-data:/data
@@ -194,22 +194,22 @@ networks:
 
 volumes:
   app-vendor:
-    name: pz-app-vendor
+    name: ${PROJECT_PREFIX:-pz}-app-vendor
   app-node-modules:
-    name: pz-app-node-modules
+    name: ${PROJECT_PREFIX:-pz}-app-node-modules
   app-build:
-    name: pz-app-build
+    name: ${PROJECT_PREFIX:-pz}-app-build
   zomboid-server:
-    name: pz-server-files
+    name: ${PROJECT_PREFIX:-pz}-server-files
   zomboid-data:
-    name: pz-data
+    name: ${PROJECT_PREFIX:-pz}-data
   postgres-data:
-    name: pz-postgres
+    name: ${PROJECT_PREFIX:-pz}-postgres
   redis-data:
-    name: pz-redis
+    name: ${PROJECT_PREFIX:-pz}-redis
   backup-data:
-    name: pz-backups
+    name: ${PROJECT_PREFIX:-pz}-backups
   lua-bridge:
-    name: pz-lua-bridge
+    name: ${PROJECT_PREFIX:-pz}-lua-bridge
   map-tiles:
-    name: pz-map-tiles
+    name: ${PROJECT_PREFIX:-pz}-map-tiles

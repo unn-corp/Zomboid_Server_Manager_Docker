@@ -26,9 +26,9 @@ class StopGameServer implements ShouldQueue
 
         try {
             $rcon->connect();
-            $rcon->command('save');
+            $rcon->command('/save');
             sleep(5);
-            $rcon->command('quit');
+            $rcon->command('/quit');
         } catch (\Throwable $e) {
             Log::warning('RCON unavailable during scheduled stop, proceeding with Docker stop', [
                 'error' => $e->getMessage(),

@@ -56,9 +56,9 @@ class UpdateGameServer implements ShouldQueue
         // 4. Graceful shutdown via RCON
         try {
             $rcon->connect();
-            $rcon->command('save');
+            $rcon->command('/save');
             sleep(5);
-            $rcon->command('quit');
+            $rcon->command('/quit');
             sleep(2);
         } catch (\Throwable $e) {
             Log::warning('RCON unavailable during update, proceeding with Docker stop', [
