@@ -76,7 +76,10 @@ class GameVersionReader
     private function detectVersionFromLogs(): ?string
     {
         try {
-            $lines = $this->docker->getContainerLogs(200);
+            // Only read logs from the current container boot to avoid stale versions
+            $status = $this->docker->getContainerStatus();
+            $since = $status['started_at'] ?? null;
+            $lines = $this->docker->getContainerLogs(200, $since);
         } catch (\Throwable $e) {
             Log::debug('GameVersionReader: failed to read Docker logs', [
                 'error' => $e->getMessage(),

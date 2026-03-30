@@ -66,7 +66,10 @@ class UpdateGameServer implements ShouldQueue
             ]);
         }
 
-        // 5. Stop container
+        // 5. Clear stale version cache before restart
+        Cache::forget('pz.game_version');
+
+        // 6. Stop container
         $docker->stopContainer(timeout: 30);
 
         AuditLogger::record(
@@ -80,10 +83,10 @@ class UpdateGameServer implements ShouldQueue
             ip: $this->ip,
         );
 
-        // 6. Start container (entrypoint picks up override + force flag)
+        // 7. Start container (entrypoint picks up override + force flag)
         $docker->startContainer();
 
-        // 7. Wait for server to be ready (30 min timeout for SteamCMD downloads)
+        // 8. Wait for server to be ready (30 min timeout for SteamCMD downloads)
         WaitForServerReady::dispatch(
             'server.update.completed',
             'system',
