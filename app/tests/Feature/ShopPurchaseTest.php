@@ -6,6 +6,7 @@ use App\Models\ShopItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WhitelistEntry;
+use App\Services\DeliveryQueueManager;
 use App\Services\OnlinePlayersReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -23,6 +24,21 @@ beforeEach(function () {
     $mock = Mockery::mock(OnlinePlayersReader::class);
     $mock->shouldReceive('getOnlineUsernames')->andReturn(['testplayer']);
     $this->app->instance(OnlinePlayersReader::class, $mock);
+
+    // Mock delivery queue — simulate successful RCON delivery so wallet gets debited
+    $deliveryMock = Mockery::mock(DeliveryQueueManager::class);
+    $deliveryMock->shouldReceive('giveItem')->andReturnUsing(function (string $username, string $itemType, int $count) {
+        return [
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'action' => 'give',
+            'username' => $username,
+            'item_type' => $itemType,
+            'count' => $count,
+            'status' => 'delivered',
+            'created_at' => now()->toIso8601String(),
+        ];
+    })->byDefault();
+    $this->app->instance(DeliveryQueueManager::class, $deliveryMock);
 });
 
 it('lists shop items publicly without auth', function () {

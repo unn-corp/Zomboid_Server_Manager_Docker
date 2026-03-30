@@ -192,7 +192,9 @@ describe('Scheduled restart times', function () {
     });
 
     it('enforces max 5 scheduled times', function () {
-        ScheduledRestartTime::factory()->count(5)->create();
+        foreach (['01:00', '05:00', '09:00', '13:00', '17:00'] as $time) {
+            ScheduledRestartTime::factory()->create(['time' => $time]);
+        }
 
         $this->actingAs($this->admin)
             ->postJson(route('admin.auto-restart.times.store'), [

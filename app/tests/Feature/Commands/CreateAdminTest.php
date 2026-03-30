@@ -37,6 +37,9 @@ it('skips when a super admin already exists', function () {
 });
 
 it('works without an email', function () {
+    // Clear the fallback email config so the command truly has no email
+    config(['zomboid.admin.email' => '']);
+
     $this->artisan('zomboid:create-admin', [
         '--username' => 'noemail',
         '--password' => 'secret123',
