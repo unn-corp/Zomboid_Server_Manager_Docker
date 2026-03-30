@@ -45,6 +45,22 @@ if [ -f "$OVERRIDE_FILE" ]; then
     echo "[entrypoint] Branch override: $GAME_VERSION"
 fi
 
+# SteamCMD public branch fix: "-beta public" is invalid — SteamCMD needs
+# the -beta flag removed entirely to download the default (public) branch.
+# The base image's apply_preinstall_config always does:
+#   sed -i "s/beta .* /beta $GAME_VERSION /g" install_server.scmd
+# which produces "-beta public" when GAME_VERSION=public. We override
+# apply_preinstall_config with our own version that handles public correctly.
+if [ "${GAME_VERSION:-}" = "public" ]; then
+    # Replace apply_preinstall_config to strip -beta entirely for public branch
+    sed -i '/# public-branch-fixup/d' /home/steam/run_server.sh
+    sed -i 's/^apply_preinstall_config$/apply_preinstall_config; sed -i "s| -beta [^ ]* | |g" \/home\/steam\/install_server.scmd # public-branch-fixup/' /home/steam/run_server.sh
+    echo "[entrypoint] Patched run_server.sh to strip -beta for public branch"
+else
+    # Remove fixup if switching back to a beta branch
+    sed -i '/# public-branch-fixup/d' /home/steam/run_server.sh
+fi
+
 # Force update flag from shared volume (written by web UI)
 FORCE_FILE="/home/steam/Zomboid/.force_update"
 if [ -f "$FORCE_FILE" ]; then
