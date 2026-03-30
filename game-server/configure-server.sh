@@ -125,6 +125,18 @@ rm -f "$MOD_SNAPSHOT"
 apply_setting "DoLuaChecksum" "false" "$INI_FILE"
 echo "[configure-server] Set DoLuaChecksum=false (required for ZomboidManager mod)"
 
+# PZ built-in anti-cheat protection types.
+# Each AntiCheatProtectionTypeN controls a specific cheat detection category.
+# When set to false, the server won't kick players for that violation type.
+# Type 21 = vehicle teleport/speed — commonly triggers false positives with modded vehicles.
+# PZ_ANTICHEAT env var controls all types: "true" (default) or "false" to disable all.
+if [ "${PZ_ANTICHEAT:-true}" = "false" ]; then
+    for i in $(seq 1 24); do
+        apply_setting "AntiCheatProtectionType${i}" "false" "$INI_FILE"
+    done
+    echo "[configure-server] Disabled all PZ AntiCheat protection types (1-24)"
+fi
+
 # ZomboidManager Workshop integration.
 # PZ B42 dedicated servers only load mods registered via Workshop (WorkshopItems= line).
 # Local mods in Zomboid/mods/ or ZomboidDedicatedServer/mods/ are NOT scanned.

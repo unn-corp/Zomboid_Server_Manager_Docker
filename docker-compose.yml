@@ -27,6 +27,7 @@ services:
       SERVER_NAME: ${PZ_SERVER_NAME:-ZomboidServer}
       SERVER_PASSWORD: ${PZ_SERVER_PASSWORD:-}
       STEAM_VAC: ${PZ_STEAM_VAC:-true}
+      PZ_ANTICHEAT: ${PZ_ANTICHEAT:-true}
       UDP_PORT: ${PZ_DIRECT_PORT:-16262}
       USE_STEAM: "true"
       TZ: ${TZ:-UTC}
