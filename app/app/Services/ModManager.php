@@ -61,10 +61,14 @@ class ModManager
         $workshopIds = $this->splitList($config['WorkshopItems'] ?? '');
         $modIds = $this->splitList($config['Mods'] ?? '');
 
-        // Don't add exact duplicates (same workshop_id + same mod_id)
-        // Allow same workshop_id with a different mod_id (mod packs with multiple sub-mods)
-        foreach (array_map(null, $workshopIds, $modIds) as [$wid, $mid]) {
-            if ($wid === $workshopId && $mid === $modId) {
+        // Don't add exact duplicates (same workshop_id AND same mod_id).
+        // A workshop item may contain multiple sub-mods with different mod IDs
+        // (e.g. FWOFitnessWorkoutOverhaul and FWOBenchPress&Treadmill both share
+        // workshop ID 2940354599). Allowing the same workshop_id with a different
+        // mod_id is intentional and required for those packs to work.
+        $count = max(count($workshopIds), count($modIds));
+        for ($i = 0; $i < $count; $i++) {
+            if (($workshopIds[$i] ?? '') === $workshopId && ($modIds[$i] ?? '') === $modId) {
                 return;
             }
         }
