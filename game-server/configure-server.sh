@@ -98,10 +98,12 @@ if [ -f "$MOD_SNAPSHOT" ]; then
     SNAPSHOT_MAP=$(grep "^Map=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^Map=//')
 fi
 
-# If mods were in the snapshot but are now empty, the base image wiped them — restore.
-if [ -z "$CURRENT_MODS" ] && [ -n "$SNAPSHOT_MODS" ]; then
+# Restore from snapshot if the base image overwrote mod lists with env var defaults.
+# The base image's apply_postinstall_config can replace Mods=/WorkshopItems= with
+# env var values, stripping mods added via the web UI. Always prefer snapshot.
+if [ -n "$SNAPSHOT_MODS" ] && [ "$SNAPSHOT_MODS" != "$CURRENT_MODS" ]; then
     apply_setting "Mods" "$SNAPSHOT_MODS" "$INI_FILE"
-    echo "[configure-server] Restored Mods from snapshot (base image wiped them)"
+    echo "[configure-server] Restored Mods from snapshot: ${SNAPSHOT_MODS:0:80}..."
 elif [ -z "$CURRENT_MODS" ] && [ -n "${PZ_MOD_IDS:-}" ]; then
     apply_setting "Mods" "${PZ_MOD_IDS}" "$INI_FILE"
     echo "[configure-server] Applied PZ_MOD_IDS from env (INI was empty)"
@@ -109,9 +111,9 @@ elif [ -n "$CURRENT_MODS" ]; then
     echo "[configure-server] Preserving existing Mods from INI: ${CURRENT_MODS:0:80}..."
 fi
 
-if [ -z "$CURRENT_WORKSHOP" ] && [ -n "$SNAPSHOT_WORKSHOP" ]; then
+if [ -n "$SNAPSHOT_WORKSHOP" ] && [ "$SNAPSHOT_WORKSHOP" != "$CURRENT_WORKSHOP" ]; then
     apply_setting "WorkshopItems" "$SNAPSHOT_WORKSHOP" "$INI_FILE"
-    echo "[configure-server] Restored WorkshopItems from snapshot (base image wiped them)"
+    echo "[configure-server] Restored WorkshopItems from snapshot: ${SNAPSHOT_WORKSHOP:0:80}..."
 elif [ -z "$CURRENT_WORKSHOP" ] && [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
     apply_setting "WorkshopItems" "${PZ_WORKSHOP_IDS}" "$INI_FILE"
     echo "[configure-server] Applied PZ_WORKSHOP_IDS from env (INI was empty)"
@@ -119,18 +121,20 @@ elif [ -n "$CURRENT_WORKSHOP" ]; then
     echo "[configure-server] Preserving existing WorkshopItems from INI: ${CURRENT_WORKSHOP:0:80}..."
 fi
 
-# Map= — same preserve/restore logic. Map mods added via web UI append their folder
-# names here. Without this, map mods break on every restart.
-if [ -z "$CURRENT_MAP" ] && [ -n "$SNAPSHOT_MAP" ]; then
+# Map= — restore from snapshot if it has map mods the base image stripped.
+# The base image's apply_postinstall_config always overwrites Map= with MAP_NAMES
+# env var (defaults to "Muldraugh, KY"), wiping any map mods added via the web UI.
+# We must always restore the snapshot if it contains a richer value.
+if [ -n "$SNAPSHOT_MAP" ] && [ "$SNAPSHOT_MAP" != "$CURRENT_MAP" ]; then
     apply_setting "Map" "$SNAPSHOT_MAP" "$INI_FILE"
-    echo "[configure-server] Restored Map from snapshot (base image wiped it)"
+    echo "[configure-server] Restored Map from snapshot: ${SNAPSHOT_MAP:0:80}..."
 elif [ -z "$CURRENT_MAP" ] && [ -n "${PZ_MAP_NAMES:-}" ]; then
     apply_setting "Map" "${PZ_MAP_NAMES}" "$INI_FILE"
     echo "[configure-server] Applied PZ_MAP_NAMES from env (INI was empty)"
 elif [ -z "$CURRENT_MAP" ]; then
     apply_setting "Map" "Muldraugh, KY" "$INI_FILE"
     echo "[configure-server] Set default Map=Muldraugh, KY (INI was empty)"
-elif [ -n "$CURRENT_MAP" ]; then
+else
     echo "[configure-server] Preserving existing Map from INI: ${CURRENT_MAP:0:80}..."
 fi
 
