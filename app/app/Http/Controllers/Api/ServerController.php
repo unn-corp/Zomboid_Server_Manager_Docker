@@ -248,4 +248,34 @@ class ServerController
         ]);
     }
 
+    public function wipeCells(Request $request): JsonResponse
+    {
+        $request->validate([
+            'cells' => ['required', 'array', 'min:1'],
+            'cells.*' => ['required', 'string', 'regex:/^\d+,\d+$/'],
+            'radius' => ['sometimes', 'integer', 'min:0', 'max:5'],
+        ]);
+
+        $cells = $request->input('cells');
+        $radius = (int) $request->input('radius', 1);
+
+        $exitCode = \Illuminate\Support\Facades\Artisan::call('zomboid:wipe-cells', [
+            '--cell' => $cells,
+            '--radius' => $radius,
+        ]);
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+
+        AuditLogger::record(
+            actor: 'api-key',
+            action: 'server.wipe-cells',
+            details: ['cells' => $cells, 'radius' => $radius],
+            ip: $request->ip(),
+        );
+
+        return response()->json([
+            'success' => $exitCode === 0,
+            'output' => trim($output),
+        ]);
+    }
 }

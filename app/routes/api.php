@@ -32,6 +32,7 @@ Route::middleware(['auth.apikey', 'audit'])->group(function () {
     Route::post('/server/update', [ServerController::class, 'update']);
     Route::get('/server/version', [ServerController::class, 'version']);
     Route::get('/server/logs', [ServerController::class, 'logs']);
+    Route::post('/server/wipe-cells', [ServerController::class, 'wipeCells']);
 
     Route::get('/config/server', [ConfigController::class, 'showServer']);
     Route::patch('/config/server', [ConfigController::class, 'updateServer']);
