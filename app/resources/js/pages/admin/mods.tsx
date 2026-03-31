@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -541,20 +540,28 @@ export default function Mods({
                             {importIsCollection && (
                                 <div className="space-y-2 pt-1">
                                     <Label>Import mode</Label>
-                                    <RadioGroup
-                                        value={importReplaceExisting}
-                                        onValueChange={(v) => setImportReplaceExisting(v as 'add' | 'replace')}
-                                        className="flex flex-col gap-2"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <RadioGroupItem value="add" id="import-add" />
-                                            <Label htmlFor="import-add" className="font-normal">Add on top of existing mods</Label>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <RadioGroupItem value="replace" id="import-replace" />
-                                            <Label htmlFor="import-replace" className="font-normal text-destructive">Replace all mods with this collection</Label>
-                                        </div>
-                                    </RadioGroup>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="import-mode"
+                                                value="add"
+                                                checked={importReplaceExisting === 'add'}
+                                                onChange={() => setImportReplaceExisting('add')}
+                                            />
+                                            <span className="text-sm">Add on top of existing mods</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="import-mode"
+                                                value="replace"
+                                                checked={importReplaceExisting === 'replace'}
+                                                onChange={() => setImportReplaceExisting('replace')}
+                                            />
+                                            <span className="text-sm text-destructive">Replace all mods with this collection</span>
+                                        </label>
+                                    </div>
                                 </div>
                             )}
                             <DialogFooter className="gap-2">
