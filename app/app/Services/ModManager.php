@@ -60,7 +60,12 @@ class ModManager
         if ($mapFolder !== null) {
             $maps = $this->splitList($config['Map'] ?? 'Muldraugh, KY', ';');
             if (! in_array($mapFolder, $maps, true)) {
+                // Map mods must come BEFORE "Muldraugh, KY" — PZ won't load
+                // modded maps if the default map is not last in the list.
+                $muldraugh = 'Muldraugh, KY';
+                $maps = array_filter($maps, fn ($m) => $m !== $muldraugh);
                 $maps[] = $mapFolder;
+                $maps[] = $muldraugh;
                 $updates['Map'] = implode(';', $maps);
             }
         }

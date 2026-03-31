@@ -95,7 +95,8 @@ it('adds map mod with map folder', function () {
 
     // Verify map was updated in INI
     $content = file_get_contents($this->iniPath);
-    expect($content)->toContain('Map=Muldraugh, KY;CustomMap');
+    // Map mods must come before "Muldraugh, KY" — PZ requires default map last
+    expect($content)->toContain('Map=CustomMap;Muldraugh, KY');
 });
 
 it('validates required fields', function () {
