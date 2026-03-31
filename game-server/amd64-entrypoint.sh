@@ -70,14 +70,14 @@ if [ -f "$FORCE_FILE" ]; then
     rm -f /home/steam/ZomboidDedicatedServer/ProjectZomboid64
 fi
 
-# Prevent renegademaster image from overwriting Mods=/WorkshopItems= with empty values.
-# When these env vars are set to "" the image clears mods added via the web UI.
-if [ -z "${MOD_NAMES:-}" ]; then
-    unset MOD_NAMES
-fi
-if [ -z "${MOD_WORKSHOP_IDS:-}" ]; then
-    unset MOD_WORKSHOP_IDS
-fi
+# Prevent renegademaster image from overwriting Mods=/WorkshopItems=/Map= with
+# env var defaults. The base image's apply_postinstall_config sets these from
+# env vars on every boot, wiping any changes made via the web UI.
+# By unsetting these, the base image's edit_server_config.py writes empty strings
+# which our configure-server.sh then restores from the snapshot.
+unset MOD_NAMES 2>/dev/null || true
+unset MOD_WORKSHOP_IDS 2>/dev/null || true
+unset MAP_NAMES 2>/dev/null || true
 
 # Snapshot current mod lines BEFORE the base image can wipe them.
 # configure-server.sh will restore these if the base image clears them.
