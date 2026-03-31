@@ -18,7 +18,7 @@ class AddModRequest extends FormRequest
     {
         return [
             'workshop_id' => ['required', 'string', 'max:20'],
-            'mod_id' => ['required', 'string', 'max:255'],
+            'mod_id' => ['required', 'string', 'max:255', 'regex:/^[^;]+$/'],
             'map_folder' => ['sometimes', 'string', 'max:255'],
         ];
     }

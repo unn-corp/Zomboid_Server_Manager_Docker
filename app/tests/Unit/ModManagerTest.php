@@ -34,10 +34,19 @@ it('adds a mod to both lists', function () {
         ->and($mods[2]['mod_id'])->toBe('TestMod');
 });
 
-it('prevents duplicate workshop ids', function () {
+it('prevents exact duplicate (same workshop_id and same mod_id)', function () {
     $this->manager->add($this->iniPath, '2561774086', 'SuperSurvivors');
 
     expect($this->manager->list($this->iniPath))->toHaveCount(2);
+});
+
+it('allows same workshop_id with a different mod_id for multi-sub-mod packs', function () {
+    $this->manager->add($this->iniPath, '2561774086', 'SuperSurvivorsSub');
+
+    $mods = $this->manager->list($this->iniPath);
+    expect($mods)->toHaveCount(3)
+        ->and($mods[2]['workshop_id'])->toBe('2561774086')
+        ->and($mods[2]['mod_id'])->toBe('SuperSurvivorsSub');
 });
 
 it('removes a mod from both lists', function () {
@@ -80,6 +89,20 @@ it('adds map folder when adding map mod', function () {
     $config = $this->parser->read($this->iniPath);
 
     expect($config['Map'])->toContain('CustomMap');
+});
+
+it('reports aligned when WorkshopItems and Mods counts match', function () {
+    expect($this->manager->isAligned($this->iniPath))->toBeTrue();
+});
+
+it('reports misaligned when WorkshopItems and Mods counts differ', function () {
+    // Manually write a misaligned state (3 workshop IDs, 2 mod IDs)
+    $this->parser->write($this->iniPath, [
+        'WorkshopItems' => '2561774086;2286126274;1111111111',
+        'Mods' => 'SuperSurvivors;Hydrocraft',
+    ]);
+
+    expect($this->manager->isAligned($this->iniPath))->toBeFalse();
 });
 
 it('removes map folder when removing map mod', function () {

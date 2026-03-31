@@ -22,9 +22,11 @@ class ModController extends Controller
         $mods = [];
         $iniPath = config('zomboid.paths.server_ini');
         $iniExists = file_exists($iniPath);
+        $iniMisaligned = false;
 
         try {
             $mods = $this->modManager->list($iniPath);
+            $iniMisaligned = ! $this->modManager->isAligned($iniPath);
         } catch (\Throwable) {
             // Config not available
         }
@@ -33,6 +35,7 @@ class ModController extends Controller
             'mods' => $mods,
             'ini_file' => basename($iniPath),
             'ini_exists' => $iniExists,
+            'ini_misaligned' => $iniMisaligned,
         ]);
     }
 
@@ -40,7 +43,7 @@ class ModController extends Controller
     {
         $validated = $request->validate([
             'workshop_id' => 'required|string|max:20',
-            'mod_id' => 'required|string|max:255',
+            'mod_id' => ['required', 'string', 'max:255', 'regex:/^[^;]+$/'],
             'map_folder' => 'nullable|string|max:255',
         ]);
 

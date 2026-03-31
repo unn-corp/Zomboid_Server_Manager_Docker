@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { Package, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { BreadcrumbItem, ModEntry } from '@/types';
 
@@ -24,7 +26,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Mods', href: '/admin/mods' },
 ];
 
-export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[]; ini_file: string; ini_exists: boolean }) {
+type ImportItem = {
+    workshop_id: string;
+    title: string;
+    detected_mod_id: string | null;
+    mod_id: string; // editable by user
+};
+
+export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { mods: ModEntry[]; ini_file: string; ini_exists: boolean; ini_misaligned: boolean }) {
     const [showAdd, setShowAdd] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<ModEntry | null>(null);
     const [workshopId, setWorkshopId] = useState('');
@@ -32,6 +41,17 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
     const [mapFolder, setMapFolder] = useState('');
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [modIdError, setModIdError] = useState('');
+
+    // Import dialog state
+    const [showImport, setShowImport] = useState(false);
+    const [importStep, setImportStep] = useState<'input' | 'review'>('input');
+    const [importUrl, setImportUrl] = useState('');
+    const [importLookupError, setImportLookupError] = useState('');
+    const [importLoading, setImportLoading] = useState(false);
+    const [importItems, setImportItems] = useState<ImportItem[]>([]);
+    const [importIsCollection, setImportIsCollection] = useState(false);
+    const [importReplaceExisting, setImportReplaceExisting] = useState<'add' | 'replace'>('add');
 
     const filteredMods = useMemo(() => {
         if (!search) return mods;
@@ -40,6 +60,10 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
     }, [mods, search]);
 
     async function addMod() {
+        if (modId.includes(';')) {
+            setModIdError('Mod ID must not contain semicolons. Add each sub-mod as a separate entry.');
+            return;
+        }
         setLoading(true);
         await fetchAction('/admin/mods', {
             data: { workshop_id: workshopId, mod_id: modId, map_folder: mapFolder || null },
@@ -50,6 +74,7 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
         setWorkshopId('');
         setModId('');
         setMapFolder('');
+        setModIdError('');
         router.reload({ only: ['mods'] });
     }
 
@@ -64,10 +89,90 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
         router.reload({ only: ['mods'] });
     }
 
+    function openImport() {
+        setImportUrl('');
+        setImportLookupError('');
+        setImportItems([]);
+        setImportIsCollection(false);
+        setImportReplaceExisting('add');
+        setImportStep('input');
+        setShowImport(true);
+    }
+
+    async function lookupImport() {
+        if (!importUrl.trim()) return;
+        setImportLoading(true);
+        setImportLookupError('');
+
+        try {
+            const res = await fetch('/admin/mods/import/lookup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                body: JSON.stringify({ url: importUrl.trim() }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setImportLookupError(data.error ?? 'Failed to look up workshop item.');
+                setImportLoading(false);
+                return;
+            }
+
+            if (!data.items || data.items.length === 0) {
+                setImportLookupError('No items found. Check the URL and try again.');
+                setImportLoading(false);
+                return;
+            }
+
+            setImportItems(
+                data.items.map((item: { workshop_id: string; title: string; detected_mod_id: string | null }) => ({
+                    ...item,
+                    mod_id: item.detected_mod_id ?? '',
+                })),
+            );
+            setImportIsCollection(data.is_collection ?? false);
+            setImportStep('review');
+        } catch {
+            setImportLookupError('Network error. Please try again.');
+        }
+
+        setImportLoading(false);
+    }
+
+    async function applyImport() {
+        const missingModIds = importItems.some((item) => !item.mod_id.trim());
+        if (missingModIds) return;
+
+        setImportLoading(true);
+        await fetchAction('/admin/mods/import/apply', {
+            data: {
+                mods: importItems.map((item) => ({ workshop_id: item.workshop_id, mod_id: item.mod_id.trim() })),
+                replace_existing: importReplaceExisting === 'replace',
+            },
+            successMessage: `Imported ${importItems.length} mod${importItems.length !== 1 ? 's' : ''}`,
+        });
+        setImportLoading(false);
+        setShowImport(false);
+        router.reload({ only: ['mods'] });
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Mod Manager" />
             <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+                {ini_misaligned && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="size-4" />
+                        <AlertTitle>Mod list is misaligned</AlertTitle>
+                        <AlertDescription>
+                            The <code>WorkshopItems=</code> and <code>Mods=</code> lines have different counts. This usually means the INI was manually edited or a mod ID was entered with a semicolon. Add/remove operations may act on the wrong mods. Fix the INI file directly before making changes.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Mod Manager</h1>
@@ -82,10 +187,16 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
                             )}
                         </div>
                     </div>
-                    <Button onClick={() => setShowAdd(true)}>
-                        <Plus className="mr-1.5 size-4" />
-                        Add Mod
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={openImport}>
+                            <Download className="mr-1.5 size-4" />
+                            Import from Workshop
+                        </Button>
+                        <Button onClick={() => setShowAdd(true)}>
+                            <Plus className="mr-1.5 size-4" />
+                            Add Mod
+                        </Button>
+                    </div>
                 </div>
 
                 <Card>
@@ -125,7 +236,7 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
                                 </TableHeader>
                                 <TableBody>
                                     {filteredMods.map((mod) => (
-                                        <TableRow key={mod.workshop_id}>
+                                        <TableRow key={`${mod.workshop_id}-${mod.position}`}>
                                             <TableCell className="font-mono text-xs text-muted-foreground">
                                                 {mod.position + 1}
                                             </TableCell>
@@ -187,9 +298,12 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
                             <Input
                                 id="mod-id"
                                 value={modId}
-                                onChange={(e) => setModId(e.target.value)}
+                                onChange={(e) => { setModId(e.target.value); setModIdError(''); }}
                                 placeholder="e.g. Arsenal(26)GunFighter"
+                                className={modIdError ? 'border-destructive' : ''}
                             />
+                            {modIdError && <p className="text-xs text-destructive">{modIdError}</p>}
+                            <p className="text-xs text-muted-foreground">One mod ID per entry. For mods with multiple sub-mods, add the workshop item again with each mod ID separately.</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="map-folder">Map Folder (optional)</Label>
@@ -230,6 +344,118 @@ export default function Mods({ mods, ini_file, ini_exists }: { mods: ModEntry[];
                             Remove Mod
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Import from Workshop Dialog */}
+            <Dialog open={showImport} onOpenChange={(open) => { if (!importLoading) setShowImport(open); }}>
+                <DialogContent className="sm:max-w-2xl">
+                    {importStep === 'input' ? (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>Import from Steam Workshop</DialogTitle>
+                                <DialogDescription>
+                                    Paste a Steam Workshop mod URL or collection URL. Workshop IDs are also accepted.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-3">
+                                <Label htmlFor="import-url">Workshop URL or ID</Label>
+                                <Input
+                                    id="import-url"
+                                    value={importUrl}
+                                    onChange={(e) => { setImportUrl(e.target.value); setImportLookupError(''); }}
+                                    placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=2200148440"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') lookupImport(); }}
+                                />
+                                {importLookupError && <p className="text-xs text-destructive">{importLookupError}</p>}
+                                <p className="text-xs text-muted-foreground">
+                                    Supports individual mod links and collection links. Mod IDs will be auto-detected where possible.
+                                </p>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
+                                <Button disabled={importLoading || !importUrl.trim()} onClick={lookupImport}>
+                                    {importLoading ? 'Looking up...' : 'Look Up'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    ) : (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    {importIsCollection ? 'Review Collection' : 'Review Mod'}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    {importIsCollection
+                                        ? `Found ${importItems.length} mod${importItems.length !== 1 ? 's' : ''} in this collection. Fill in any missing Mod IDs before importing.`
+                                        : 'Confirm the mod details before adding. Fill in the Mod ID if it was not detected automatically.'}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="max-h-72 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Title</TableHead>
+                                            <TableHead className="w-[130px]">Workshop ID</TableHead>
+                                            <TableHead className="w-[180px]">Mod ID</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {importItems.map((item, i) => (
+                                            <TableRow key={item.workshop_id}>
+                                                <TableCell className="text-sm">{item.title}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary" className="font-mono text-xs">
+                                                        {item.workshop_id}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        value={item.mod_id}
+                                                        onChange={(e) => {
+                                                            const updated = [...importItems];
+                                                            updated[i] = { ...updated[i], mod_id: e.target.value };
+                                                            setImportItems(updated);
+                                                        }}
+                                                        placeholder="Required"
+                                                        className={!item.mod_id.trim() ? 'border-destructive' : ''}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            {importIsCollection && (
+                                <div className="space-y-2 pt-1">
+                                    <Label>Import mode</Label>
+                                    <RadioGroup
+                                        value={importReplaceExisting}
+                                        onValueChange={(v) => setImportReplaceExisting(v as 'add' | 'replace')}
+                                        className="flex flex-col gap-2"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <RadioGroupItem value="add" id="import-add" />
+                                            <Label htmlFor="import-add" className="font-normal">Add on top of existing mods</Label>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <RadioGroupItem value="replace" id="import-replace" />
+                                            <Label htmlFor="import-replace" className="font-normal text-destructive">Replace all mods with this collection</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                            )}
+                            <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setImportStep('input')}>Back</Button>
+                                <Button
+                                    disabled={importLoading || importItems.some((item) => !item.mod_id.trim())}
+                                    onClick={applyImport}
+                                >
+                                    {importLoading ? 'Importing...' : `Import ${importItems.length} mod${importItems.length !== 1 ? 's' : ''}`}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
         </AppLayout>

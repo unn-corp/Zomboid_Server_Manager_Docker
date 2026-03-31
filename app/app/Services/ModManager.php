@@ -61,9 +61,12 @@ class ModManager
         $workshopIds = $this->splitList($config['WorkshopItems'] ?? '');
         $modIds = $this->splitList($config['Mods'] ?? '');
 
-        // Don't add duplicates
-        if (in_array($workshopId, $workshopIds, true)) {
-            return;
+        // Don't add exact duplicates (same workshop_id + same mod_id)
+        // Allow same workshop_id with a different mod_id (mod packs with multiple sub-mods)
+        foreach (array_map(null, $workshopIds, $modIds) as [$wid, $mid]) {
+            if ($wid === $workshopId && $mid === $modId) {
+                return;
+            }
         }
 
         $workshopIds[] = $workshopId;
@@ -194,6 +197,37 @@ class ModManager
         $this->iniParser->write($iniPath, $updates);
 
         return $removed;
+    }
+
+    /**
+     * Replace the entire mod list, wiping WorkshopItems=, Mods=, and Map= (reset to default).
+     *
+     * @param  array<int, array{workshop_id: string, mod_id: string}>  $mods
+     */
+    public function replaceAll(string $iniPath, array $mods): void
+    {
+        $workshopIds = array_column($mods, 'workshop_id');
+        $modIds = array_column($mods, 'mod_id');
+
+        $this->iniParser->write($iniPath, [
+            'WorkshopItems' => implode(';', $workshopIds),
+            'Mods' => implode(';', $modIds),
+            'Map' => 'Muldraugh, KY',
+        ]);
+    }
+
+    /**
+     * Check whether WorkshopItems= and Mods= have the same number of entries.
+     * Misalignment means the lists were corrupted (manual edit or semicolons in mod_id).
+     */
+    public function isAligned(string $iniPath): bool
+    {
+        $config = $this->iniParser->read($iniPath);
+
+        $workshopIds = $this->splitList($config['WorkshopItems'] ?? '');
+        $modIds = $this->splitList($config['Mods'] ?? '');
+
+        return count($workshopIds) === count($modIds);
     }
 
     /**

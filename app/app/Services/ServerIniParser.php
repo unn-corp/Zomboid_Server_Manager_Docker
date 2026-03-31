@@ -33,7 +33,7 @@ class ServerIniParser
             }
 
             [$key, $value] = explode('=', $line, 2);
-            $data[trim($key)] = $value;
+            $data[trim($key)] = trim($value);
         }
 
         return $data;
