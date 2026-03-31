@@ -4,9 +4,23 @@ namespace App\Services;
 
 class ModManager
 {
+    private string $workshopBasePath;
+
     public function __construct(
         private readonly ServerIniParser $iniParser,
-    ) {}
+        ?string $workshopBasePath = null,
+    ) {
+        $this->workshopBasePath = $workshopBasePath ?? '';
+    }
+
+    private function getWorkshopBasePath(): string
+    {
+        if ($this->workshopBasePath === '') {
+            $this->workshopBasePath = config('zomboid.game_server_path', '/pz-server').'/steamapps/workshop/content/108600';
+        }
+
+        return $this->workshopBasePath;
+    }
 
     /**
      * Get the current mod list parsed from server.ini.
@@ -36,6 +50,9 @@ class ModManager
 
     /**
      * Add a mod to both WorkshopItems and Mods lines.
+     *
+     * If no $mapFolder is given, auto-detects map folders from the Workshop
+     * download directory by scanning for media/maps/ subdirectories.
      */
     public function add(string $iniPath, string $workshopId, string $modId, ?string $mapFolder = null): void
     {
@@ -57,24 +74,83 @@ class ModManager
             'Mods' => implode(';', $modIds),
         ];
 
-        if ($mapFolder !== null) {
+        // Auto-detect map folders if none provided
+        $mapFolders = $mapFolder !== null
+            ? [$mapFolder]
+            : $this->detectMapFolders($workshopId);
+
+        if ($mapFolders !== []) {
             $maps = $this->splitList($config['Map'] ?? 'Muldraugh, KY', ';');
-            if (! in_array($mapFolder, $maps, true)) {
-                // Map mods must come BEFORE "Muldraugh, KY" — PZ won't load
-                // modded maps if the default map is not last in the list.
-                $muldraugh = 'Muldraugh, KY';
-                $maps = array_filter($maps, fn ($m) => $m !== $muldraugh);
-                $maps[] = $mapFolder;
-                $maps[] = $muldraugh;
-                $updates['Map'] = implode(';', $maps);
+            $muldraugh = 'Muldraugh, KY';
+            $maps = array_filter($maps, fn ($m) => $m !== $muldraugh);
+
+            foreach ($mapFolders as $folder) {
+                if (! in_array($folder, $maps, true)) {
+                    $maps[] = $folder;
+                }
             }
+
+            // PZ requires "Muldraugh, KY" to be last in the Map= line
+            $maps[] = $muldraugh;
+            $updates['Map'] = implode(';', $maps);
         }
 
         $this->iniParser->write($iniPath, $updates);
     }
 
     /**
+     * Detect map folders from a Workshop mod's downloaded content.
+     *
+     * PZ map mods contain media/maps/{FolderName}/ directories. This scans
+     * the Workshop cache for those directories to auto-detect map folders.
+     *
+     * @return string[]
+     */
+    public function detectMapFolders(string $workshopId): array
+    {
+        $folders = [];
+
+        // Check multiple possible structures in Workshop content
+        try {
+            $base = $this->getWorkshopBasePath();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if (! is_dir($base)) {
+            return [];
+        }
+        $searchPaths = [
+            // Root level: {WORKSHOP_ID}/media/maps/*/
+            $base.'/'.$workshopId.'/media/maps',
+            // Inside mods subdir: {WORKSHOP_ID}/mods/*/media/maps/*/
+            $base.'/'.$workshopId.'/mods/*/media/maps',
+            // B42 subdir: {WORKSHOP_ID}/42/media/maps/*/
+            $base.'/'.$workshopId.'/42/media/maps',
+        ];
+
+        foreach ($searchPaths as $searchPath) {
+            $matches = glob($searchPath.'/*', GLOB_ONLYDIR);
+            if ($matches === false) {
+                continue;
+            }
+
+            foreach ($matches as $dir) {
+                $folderName = basename($dir);
+                if ($folderName !== '.' && $folderName !== '..' && ! in_array($folderName, $folders, true)) {
+                    $folders[] = $folderName;
+                }
+            }
+        }
+
+        return $folders;
+    }
+
+    /**
      * Remove a mod by workshop ID from both lines.
+     *
+     * If no $mapFolder is given, auto-detects map folders from the Workshop
+     * download directory and removes them from the Map= line.
      *
      * @return array{workshop_id: string, mod_id: string}|null The removed mod, or null if not found.
      */
@@ -104,9 +180,14 @@ class ModManager
             'Mods' => implode(';', $modIds),
         ];
 
-        if ($mapFolder !== null) {
+        // Auto-detect map folders if none provided
+        $mapFolders = $mapFolder !== null
+            ? [$mapFolder]
+            : $this->detectMapFolders($workshopId);
+
+        if ($mapFolders !== []) {
             $maps = $this->splitList($config['Map'] ?? '', ';');
-            $maps = array_filter($maps, fn ($m) => $m !== $mapFolder);
+            $maps = array_filter($maps, fn ($m) => ! in_array($m, $mapFolders, true));
             $updates['Map'] = implode(';', array_values($maps));
         }
 
