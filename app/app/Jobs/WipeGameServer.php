@@ -23,6 +23,7 @@ class WipeGameServer implements ShouldQueue
 
     public function __construct(
         private readonly string $ip,
+        private readonly bool $mapOnly = false,
     ) {}
 
     public function handle(RconClient $rcon, DockerManager $docker, BackupManager $backupManager): void
@@ -60,32 +61,68 @@ class WipeGameServer implements ShouldQueue
             actor: 'system',
             action: 'server.wipe.executed',
             target: config('zomboid.docker.container_name'),
-            details: ['source' => 'scheduled_job'],
+            details: ['source' => 'scheduled_job', 'map_only' => $this->mapOnly],
             ip: $this->ip,
         );
 
-        // 3. Delete ALL save data, databases, and PZ internal backups
         $dataPath = config('zomboid.paths.data');
 
-        // Remove all saves (every server name, every game mode)
-        $savesPath = "{$dataPath}/Saves";
-        if (is_dir($savesPath)) {
-            $deleteResult = Process::run(['rm', '-rf', $savesPath]);
-            Log::info('All save data deleted', ['path' => $savesPath, 'success' => $deleteResult->successful()]);
-        }
+        if ($this->mapOnly) {
+            // 3a. Map-only wipe: delete map chunks but keep player files (.plr)
+            // Players keep their skills, inventory, and XP but the world regenerates
+            $serverName = config('zomboid.server_name', 'ZomboidServer');
+            $savePath = "{$dataPath}/Saves/Multiplayer/{$serverName}";
 
-        // Remove all server databases (player accounts, roles, config)
-        $dbPath = "{$dataPath}/db";
-        if (is_dir($dbPath)) {
-            $deleteResult = Process::run(['rm', '-rf', $dbPath]);
-            Log::info('All server databases deleted', ['path' => $dbPath, 'success' => $deleteResult->successful()]);
-        }
+            if (is_dir($savePath)) {
+                // Delete map cells, zombies, vehicles, loot — everything except .plr files
+                $patterns = ['map_*.bin', 'zpop_*.bin', 'vehicles*.bin', 'reanimated*.bin', 'chunkdata_*.bin', 'lootMap.bin'];
+                foreach ($patterns as $pattern) {
+                    $files = glob("{$savePath}/{$pattern}");
+                    if ($files) {
+                        foreach ($files as $file) {
+                            unlink($file);
+                        }
+                    }
+                }
 
-        // Remove PZ startup backups — PZ auto-restores saves from these on boot
-        $startupBackups = "{$dataPath}/backups/startup";
-        if (is_dir($startupBackups)) {
-            $backupResult = Process::run(['rm', '-rf', $startupBackups]);
-            Log::info('PZ startup backups deleted', ['success' => $backupResult->successful()]);
+                // Delete map subdirectories (cell data)
+                $dirs = glob("{$savePath}/map_*", GLOB_ONLYDIR);
+                if ($dirs) {
+                    foreach ($dirs as $dir) {
+                        Process::run(['rm', '-rf', $dir]);
+                    }
+                }
+
+                Log::info('Map data wiped (players preserved)', ['path' => $savePath]);
+            }
+
+            // Remove PZ startup backups so it doesn't auto-restore old map
+            $startupBackups = "{$dataPath}/backups/startup";
+            if (is_dir($startupBackups)) {
+                Process::run(['rm', '-rf', $startupBackups]);
+                Log::info('PZ startup backups deleted');
+            }
+        } else {
+            // 3b. Full wipe: delete ALL save data, databases, and PZ internal backups
+            $savesPath = "{$dataPath}/Saves";
+            if (is_dir($savesPath)) {
+                $deleteResult = Process::run(['rm', '-rf', $savesPath]);
+                Log::info('All save data deleted', ['path' => $savesPath, 'success' => $deleteResult->successful()]);
+            }
+
+            // Remove all server databases (player accounts, roles, config)
+            $dbPath = "{$dataPath}/db";
+            if (is_dir($dbPath)) {
+                $deleteResult = Process::run(['rm', '-rf', $dbPath]);
+                Log::info('All server databases deleted', ['path' => $dbPath, 'success' => $deleteResult->successful()]);
+            }
+
+            // Remove PZ startup backups — PZ auto-restores saves from these on boot
+            $startupBackups = "{$dataPath}/backups/startup";
+            if (is_dir($startupBackups)) {
+                $backupResult = Process::run(['rm', '-rf', $startupBackups]);
+                Log::info('PZ startup backups deleted', ['success' => $backupResult->successful()]);
+            }
         }
 
         // 4. Start server

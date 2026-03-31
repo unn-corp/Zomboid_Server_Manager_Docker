@@ -206,9 +206,13 @@ class ServerController extends Controller
     {
         $countdown = $request->validated('countdown');
         $message = $request->validated('message');
+        $mapOnly = (bool) $request->validated('map_only', false);
+        $wipeLabel = $mapOnly ? 'map wipe' : 'wipe';
 
         if ($countdown) {
-            $warningMessage = $message ?? "Server wiping in {$countdown} seconds — all save data will be deleted";
+            $warningMessage = $message ?? ($mapOnly
+                ? "Server map wiping in {$countdown} seconds — map will regenerate but characters are preserved"
+                : "Server wiping in {$countdown} seconds — all save data will be deleted");
 
             try {
                 $this->rcon->connect();
@@ -217,7 +221,7 @@ class ServerController extends Controller
                 // RCON unavailable — still schedule the wipe
             }
 
-            WipeGameServer::dispatch($request->ip())
+            WipeGameServer::dispatch($request->ip(), $mapOnly)
                 ->delay(now()->addSeconds($countdown));
 
             SendServerWarning::dispatchCountdownWarnings($countdown, 'wiping', 'server.pending_action:wipe');
@@ -226,11 +230,11 @@ class ServerController extends Controller
                 actor: $request->user()->name ?? 'admin',
                 action: 'server.wipe.scheduled',
                 ip: $request->ip(),
-                details: ['countdown' => $countdown],
+                details: array_filter(['countdown' => $countdown, 'map_only' => $mapOnly]),
             );
 
             return response()->json([
-                'message' => "Server wipe scheduled in {$countdown} seconds",
+                'message' => "Server {$wipeLabel} scheduled in {$countdown} seconds",
                 'countdown' => $countdown,
             ]);
         }
@@ -240,11 +244,12 @@ class ServerController extends Controller
             actor: $request->user()->name ?? 'admin',
             action: 'server.wipe',
             ip: $request->ip(),
+            details: array_filter(['map_only' => $mapOnly]),
         );
 
-        WipeGameServer::dispatch($request->ip());
+        WipeGameServer::dispatch($request->ip(), $mapOnly);
 
-        return response()->json(['message' => 'Server wipe in progress']);
+        return response()->json(['message' => "Server {$wipeLabel} in progress"]);
     }
 
     public function update(UpdateServerRequest $request): JsonResponse
