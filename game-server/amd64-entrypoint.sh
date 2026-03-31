@@ -87,6 +87,7 @@ MOD_SNAPSHOT="/tmp/.mod_snapshot"
 if [ -f "$INI" ]; then
     grep "^Mods=" "$INI" > "$MOD_SNAPSHOT" 2>/dev/null || true
     grep "^WorkshopItems=" "$INI" >> "$MOD_SNAPSHOT" 2>/dev/null || true
+    grep "^Map=" "$INI" >> "$MOD_SNAPSHOT" 2>/dev/null || true
     echo "[entrypoint] Saved mod snapshot from INI ($(wc -l < "$MOD_SNAPSHOT") lines)"
 fi
 

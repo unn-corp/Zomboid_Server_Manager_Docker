@@ -65,7 +65,7 @@ apply_setting() {
 apply_setting "DefaultPort"          "${PZ_GAME_PORT:-16261}"       "$INI_FILE"
 apply_setting "UDPPort"              "${PZ_DIRECT_PORT:-16262}"     "$INI_FILE"
 apply_setting "MaxPlayers"           "${PZ_MAX_PLAYERS:-16}"        "$INI_FILE"
-apply_setting "Map"                  "${PZ_MAP_NAMES:-Muldraugh, KY}" "$INI_FILE"
+# Map= is handled separately below with snapshot/restore logic (same as Mods=/WorkshopItems=)
 apply_setting "Public"               "${PZ_PUBLIC_SERVER:-true}"    "$INI_FILE"
 apply_setting "PauseEmpty"           "${PZ_PAUSE_ON_EMPTY:-true}"   "$INI_FILE"
 apply_setting "SaveWorldEveryMinutes" "${PZ_AUTOSAVE_INTERVAL:-15}" "$INI_FILE"
@@ -83,16 +83,19 @@ apply_setting "RCONPort"             "${PZ_RCON_PORT:-${RCON_PORT:-27015}}"     
 apply_setting "RCONPassword"         "${PZ_RCON_PASSWORD:-${RCON_PASSWORD:-changeme}}" "$INI_FILE"
 
 # Mods — restore from snapshot if the base image wiped them, otherwise preserve.
-# The entrypoint saves a snapshot of Mods=/WorkshopItems= BEFORE the base image runs.
+# The entrypoint saves a snapshot of Mods=/WorkshopItems=/Map= BEFORE the base image runs.
 MOD_SNAPSHOT="/tmp/.mod_snapshot"
 CURRENT_MODS=$(grep "^Mods=" "$INI_FILE" 2>/dev/null | sed 's/^Mods=//')
 CURRENT_WORKSHOP=$(grep "^WorkshopItems=" "$INI_FILE" 2>/dev/null | sed 's/^WorkshopItems=//')
+CURRENT_MAP=$(grep "^Map=" "$INI_FILE" 2>/dev/null | sed 's/^Map=//')
 SNAPSHOT_MODS=""
 SNAPSHOT_WORKSHOP=""
+SNAPSHOT_MAP=""
 
 if [ -f "$MOD_SNAPSHOT" ]; then
     SNAPSHOT_MODS=$(grep "^Mods=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^Mods=//')
     SNAPSHOT_WORKSHOP=$(grep "^WorkshopItems=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^WorkshopItems=//')
+    SNAPSHOT_MAP=$(grep "^Map=" "$MOD_SNAPSHOT" 2>/dev/null | sed 's/^Map=//')
 fi
 
 # If mods were in the snapshot but are now empty, the base image wiped them — restore.
@@ -114,6 +117,21 @@ elif [ -z "$CURRENT_WORKSHOP" ] && [ -n "${PZ_WORKSHOP_IDS:-}" ]; then
     echo "[configure-server] Applied PZ_WORKSHOP_IDS from env (INI was empty)"
 elif [ -n "$CURRENT_WORKSHOP" ]; then
     echo "[configure-server] Preserving existing WorkshopItems from INI: ${CURRENT_WORKSHOP:0:80}..."
+fi
+
+# Map= — same preserve/restore logic. Map mods added via web UI append their folder
+# names here. Without this, map mods break on every restart.
+if [ -z "$CURRENT_MAP" ] && [ -n "$SNAPSHOT_MAP" ]; then
+    apply_setting "Map" "$SNAPSHOT_MAP" "$INI_FILE"
+    echo "[configure-server] Restored Map from snapshot (base image wiped it)"
+elif [ -z "$CURRENT_MAP" ] && [ -n "${PZ_MAP_NAMES:-}" ]; then
+    apply_setting "Map" "${PZ_MAP_NAMES}" "$INI_FILE"
+    echo "[configure-server] Applied PZ_MAP_NAMES from env (INI was empty)"
+elif [ -z "$CURRENT_MAP" ]; then
+    apply_setting "Map" "Muldraugh, KY" "$INI_FILE"
+    echo "[configure-server] Set default Map=Muldraugh, KY (INI was empty)"
+elif [ -n "$CURRENT_MAP" ]; then
+    echo "[configure-server] Preserving existing Map from INI: ${CURRENT_MAP:0:80}..."
 fi
 
 # Clean up snapshot
