@@ -280,6 +280,29 @@ class ServerController
         ]);
     }
 
+    public function rcon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'command' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->rcon->connect();
+            $response = $this->rcon->command($request->input('command'));
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'RCON failed', 'detail' => $e->getMessage()], 503);
+        }
+
+        AuditLogger::record(
+            actor: 'api-key',
+            action: 'server.rcon',
+            details: ['command' => $request->input('command')],
+            ip: $request->ip(),
+        );
+
+        return response()->json(['response' => $response]);
+    }
+
     public function wipe(Request $request): JsonResponse
     {
         $request->validate([

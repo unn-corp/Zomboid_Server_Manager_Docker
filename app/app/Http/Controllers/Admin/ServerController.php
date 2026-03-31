@@ -207,7 +207,8 @@ class ServerController extends Controller
         $countdown = $request->validated('countdown');
         $message = $request->validated('message');
         $mapOnly = (bool) $request->validated('map_only', false);
-        $wipeLabel = $mapOnly ? 'map wipe' : 'wipe';
+        $playersOnly = (bool) $request->validated('players_only', false);
+        $wipeLabel = $mapOnly ? 'map wipe' : ($playersOnly ? 'player wipe' : 'wipe');
 
         if ($countdown) {
             $warningMessage = $message ?? ($mapOnly
@@ -221,7 +222,7 @@ class ServerController extends Controller
                 // RCON unavailable — still schedule the wipe
             }
 
-            WipeGameServer::dispatch($request->ip(), $mapOnly)
+            WipeGameServer::dispatch($request->ip(), $mapOnly, $playersOnly)
                 ->delay(now()->addSeconds($countdown));
 
             SendServerWarning::dispatchCountdownWarnings($countdown, 'wiping', 'server.pending_action:wipe');
@@ -230,7 +231,7 @@ class ServerController extends Controller
                 actor: $request->user()->name ?? 'admin',
                 action: 'server.wipe.scheduled',
                 ip: $request->ip(),
-                details: array_filter(['countdown' => $countdown, 'map_only' => $mapOnly]),
+                details: array_filter(['countdown' => $countdown, 'map_only' => $mapOnly, 'players_only' => $playersOnly]),
             );
 
             return response()->json([

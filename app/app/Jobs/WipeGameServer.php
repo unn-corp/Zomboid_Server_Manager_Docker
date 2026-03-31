@@ -24,6 +24,7 @@ class WipeGameServer implements ShouldQueue
     public function __construct(
         private readonly string $ip,
         private readonly bool $mapOnly = false,
+        private readonly bool $playersOnly = false,
     ) {}
 
     public function handle(RconClient $rcon, DockerManager $docker, BackupManager $backupManager): void
@@ -61,13 +62,34 @@ class WipeGameServer implements ShouldQueue
             actor: 'system',
             action: 'server.wipe.executed',
             target: config('zomboid.docker.container_name'),
-            details: ['source' => 'scheduled_job', 'map_only' => $this->mapOnly],
+            details: array_filter(['source' => 'scheduled_job', 'map_only' => $this->mapOnly, 'players_only' => $this->playersOnly]),
             ip: $this->ip,
         );
 
         $dataPath = config('zomboid.paths.data');
 
-        if ($this->mapOnly) {
+        if ($this->playersOnly) {
+            // 3a. Players-only wipe: delete player files and databases but keep the map
+            $serverName = config('zomboid.server_name', 'ZomboidServer');
+            $savePath = "{$dataPath}/Saves/Multiplayer/{$serverName}";
+
+            if (is_dir($savePath)) {
+                $plrFiles = glob("{$savePath}/*.plr");
+                if ($plrFiles) {
+                    foreach ($plrFiles as $file) {
+                        unlink($file);
+                    }
+                }
+                Log::info('Player save files wiped (map preserved)', ['path' => $savePath, 'count' => count($plrFiles ?: [])]);
+            }
+
+            // Remove server databases (player accounts, roles)
+            $dbPath = "{$dataPath}/db";
+            if (is_dir($dbPath)) {
+                Process::run(['rm', '-rf', $dbPath]);
+                Log::info('Server databases deleted');
+            }
+        } elseif ($this->mapOnly) {
             // 3a. Map-only wipe: delete map chunks but keep player files (.plr)
             // Players keep their skills, inventory, and XP but the world regenerates
             $serverName = config('zomboid.server_name', 'ZomboidServer');

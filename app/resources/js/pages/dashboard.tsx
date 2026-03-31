@@ -3,6 +3,7 @@ import { formatDate, formatDateTime, formatTime } from '@/lib/dates';
 import {
     Archive,
     ArrowUpCircle,
+    ChevronDown,
     Circle,
     Clock,
     Globe,
@@ -31,6 +32,7 @@ import { RestartDialog, StopDialog, UpdateDialog, WipeDialog } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
     Dialog,
     DialogClose,
@@ -71,6 +73,7 @@ export default function Dashboard({
     const [showRestartDialog, setShowRestartDialog] = useState(false);
     const [showStopDialog, setShowStopDialog] = useState(false);
     const [showWipeDialog, setShowWipeDialog] = useState(false);
+    const [wipeMode, setWipeMode] = useState<'map' | 'players' | 'all'>('all');
     const [showUpdateDialog, setShowUpdateDialog] = useState(false);
     const [connIp, setConnIp] = useState(connection.server_ip);
     const [connPort, setConnPort] = useState(connection.server_port);
@@ -216,15 +219,29 @@ export default function Dashboard({
                             <ArrowUpCircle className="mr-1.5 size-3.5" />
                             Update
                         </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={actionLoading !== null}
-                            onClick={() => setShowWipeDialog(true)}
-                        >
-                            <Trash2 className="mr-1.5 size-3.5" />
-                            Wipe
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="destructive" size="sm" disabled={actionLoading !== null}>
+                                    <Trash2 className="mr-1.5 size-3.5" />
+                                    Wipe
+                                    <ChevronDown className="ml-1 size-3.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setWipeMode('map'); setShowWipeDialog(true); }}>
+                                    Wipe Map Data
+                                    <span className="ml-auto text-xs text-muted-foreground">Keep players</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setWipeMode('players'); setShowWipeDialog(true); }}>
+                                    Wipe Player Data
+                                    <span className="ml-auto text-xs text-muted-foreground">Keep map</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => { setWipeMode('all'); setShowWipeDialog(true); }}>
+                                    Wipe Everything
+                                    <span className="ml-auto text-xs text-muted-foreground">Full reset</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -655,7 +672,7 @@ export default function Dashboard({
                 currentBranch={server.steam_branch ?? 'public'}
                 currentVersion={server.game_version}
             />
-            <WipeDialog open={showWipeDialog} onOpenChange={setShowWipeDialog} />
+            <WipeDialog open={showWipeDialog} onOpenChange={setShowWipeDialog} mode={wipeMode} />
         </AppLayout>
     );
 }

@@ -310,17 +310,41 @@ export function UpdateDialog({
 }
 
 // --- Wipe Dialog ---
+const WIPE_MODE_CONFIG = {
+    map: {
+        title: 'Wipe Map Data',
+        description: 'Delete all map chunks, zombies, vehicles, and loot. Player characters (skills, inventory, XP) are preserved. The world will regenerate fresh on next boot.',
+        warning: 'All buildings, loot, and world modifications will be permanently destroyed. Player characters will be kept.',
+        placeholder: 'Map regenerating — your characters are safe...',
+    },
+    players: {
+        title: 'Wipe Player Data',
+        description: 'Delete all player accounts and databases. The map and world state are preserved.',
+        warning: 'All player accounts, roles, and progression will be permanently destroyed. The world map will be kept.',
+        placeholder: 'Player data reset — map is preserved...',
+    },
+    all: {
+        title: 'Wipe Everything',
+        description: 'Delete all save data including map, players, and databases. A backup will be created automatically.',
+        warning: 'All player progress, buildings, and world state will be permanently destroyed. This action cannot be undone.',
+        placeholder: 'Server wiping — all progress will be reset...',
+    },
+} as const;
+
 export function WipeDialog({
     open,
     onOpenChange,
+    mode = 'all',
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    mode?: 'map' | 'players' | 'all';
 }) {
     const [countdown, setCountdown] = useState('0');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [confirmStep, setConfirmStep] = useState(0);
+    const config = WIPE_MODE_CONFIG[mode];
 
     function handleOpenChange(isOpen: boolean) {
         onOpenChange(isOpen);
@@ -337,6 +361,8 @@ export function WipeDialog({
         setLoading(true);
         const cd = parseInt(countdown, 10);
         const data: Record<string, unknown> = {};
+        if (mode === 'map') data.map_only = true;
+        if (mode === 'players') data.players_only = true;
         if (cd > 0) {
             data.countdown = cd;
             if (message.trim()) {
@@ -356,15 +382,12 @@ export function WipeDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-destructive">Wipe Server</DialogTitle>
-                    <DialogDescription>
-                        This will permanently delete all save data. A backup will be created automatically before wiping.
-                    </DialogDescription>
+                    <DialogTitle className="text-destructive">{config.title}</DialogTitle>
+                    <DialogDescription>{config.description}</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                        All player progress, buildings, and world state will be permanently destroyed.
-                        This action cannot be undone.
+                        {config.warning}
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="wipe-countdown">Countdown</Label>
@@ -386,7 +409,7 @@ export function WipeDialog({
                             <Label htmlFor="wipe-message">Warning message (optional)</Label>
                             <Input
                                 id="wipe-message"
-                                placeholder="Server wiping — all progress will be reset..."
+                                placeholder={config.placeholder}
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 maxLength={500}
@@ -406,7 +429,7 @@ export function WipeDialog({
                         {loading
                             ? 'Wiping...'
                             : confirmStep === 0
-                              ? 'Confirm Wipe'
+                              ? 'Confirm'
                               : confirmStep === 1
                                 ? 'Are you sure? Click again'
                                 : countdown === '0'
