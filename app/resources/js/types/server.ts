@@ -41,6 +41,12 @@ export type ModEntry = {
     position: number;
 };
 
+export type ModEnrichment = {
+    workshop_id: string;
+    dependency_ids: string[];
+    all_mod_ids: string[];
+};
+
 export type AuditEntry = {
     id: string;
     actor: string;

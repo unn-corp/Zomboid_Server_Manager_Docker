@@ -127,6 +127,94 @@ class SteamWorkshopService
     }
 
     /**
+     * Fetch enriched details for workshop items, including dependency IDs and all mod IDs.
+     *
+     * @param  string[]  $workshopIds
+     * @return array<int, array{workshop_id: string, dependency_ids: string[], all_mod_ids: string[]}>
+     */
+    public function fetchEnrichedItems(array $workshopIds): array
+    {
+        if (empty($workshopIds)) {
+            return [];
+        }
+
+        $params = ['itemcount' => count($workshopIds)];
+        foreach ($workshopIds as $i => $id) {
+            $params["publishedfileids[{$i}]"] = $id;
+        }
+
+        try {
+            $response = Http::timeout(15)->asForm()->post(self::PUBLISHED_FILE_DETAILS_URL, $params);
+
+            if (! $response->successful()) {
+                Log::warning('Steam workshop enriched fetch failed', ['status' => $response->status()]);
+
+                return [];
+            }
+
+            $files = $response->json('response.publishedfiledetails', []);
+        } catch (\Throwable $e) {
+            Log::warning('Steam workshop enriched fetch exception', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        $results = [];
+        foreach ($files as $file) {
+            $workshopId = (string) ($file['publishedfileid'] ?? '');
+            if ($workshopId === '') {
+                continue;
+            }
+
+            // filetype=0 children are required mod dependencies
+            $dependencyIds = [];
+            foreach ($file['children'] ?? [] as $child) {
+                if ((int) ($child['filetype'] ?? -1) === 0) {
+                    $dependencyIds[] = (string) $child['publishedfileid'];
+                }
+            }
+
+            $results[] = [
+                'workshop_id' => $workshopId,
+                'dependency_ids' => $dependencyIds,
+                'all_mod_ids' => $this->parseAllModIds($file),
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Parse all PZ mod IDs from a workshop item's description/tags.
+     *
+     * Handles "Mod IDs: A | B" and "Mod ID: A" patterns, splitting on | ; or ,
+     *
+     * @return string[]
+     */
+    public function parseAllModIds(array $itemData): array
+    {
+        $description = strip_tags($itemData['description'] ?? '');
+
+        // Match "Mod IDs?: ..." pattern — capture multi-value lists
+        if (preg_match('/mod\s*ids?\s*[:\-]\s*([A-Za-z0-9_;|&()\s\-,]+)/i', $description, $matches)) {
+            $raw = $matches[1];
+            $ids = preg_split('/[|;,]/', $raw);
+            $ids = array_map('trim', $ids ?? []);
+            $ids = array_filter($ids, fn (string $v) => $v !== '' && preg_match('/^[\w\-()&]+$/', $v));
+            $ids = array_values($ids);
+
+            if (count($ids) > 0) {
+                return $ids;
+            }
+        }
+
+        // Fallback: single mod ID from detectModId
+        $single = $this->detectModId($itemData);
+
+        return $single !== null ? [$single] : [];
+    }
+
+    /**
      * Try to detect the PZ mod ID from a workshop item's tags or description.
      *
      * PZ mods sometimes include the mod folder name as a tag value or in the

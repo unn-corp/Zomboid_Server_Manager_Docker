@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertTriangle, Download, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, Info, Package, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { fetchAction } from '@/lib/fetch-action';
 import AppLayout from '@/layouts/app-layout';
@@ -18,8 +18,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { BreadcrumbItem, ModEntry } from '@/types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { BreadcrumbItem, ModEntry, ModEnrichment } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -33,7 +35,19 @@ type ImportItem = {
     mod_id: string; // editable by user
 };
 
-export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { mods: ModEntry[]; ini_file: string; ini_exists: boolean; ini_misaligned: boolean }) {
+export default function Mods({
+    mods,
+    ini_file,
+    ini_exists,
+    ini_misaligned,
+    enriched,
+}: {
+    mods: ModEntry[];
+    ini_file: string;
+    ini_exists: boolean;
+    ini_misaligned: boolean;
+    enriched?: Record<string, ModEnrichment>;
+}) {
     const [showAdd, setShowAdd] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<ModEntry | null>(null);
     const [workshopId, setWorkshopId] = useState('');
@@ -42,6 +56,10 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [modIdError, setModIdError] = useState('');
+
+    // Multi-mod-ID hint in Add Mod dialog
+    const [addLookupLoading, setAddLookupLoading] = useState(false);
+    const [addAllModIds, setAddAllModIds] = useState<string[]>([]);
 
     // Import dialog state
     const [showImport, setShowImport] = useState(false);
@@ -53,11 +71,60 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
     const [importIsCollection, setImportIsCollection] = useState(false);
     const [importReplaceExisting, setImportReplaceExisting] = useState<'add' | 'replace'>('add');
 
+    const installedWorkshopIds = useMemo(() => new Set(mods.map((m) => m.workshop_id)), [mods]);
+    const installedModIds = useMemo(() => new Set(mods.map((m) => m.mod_id)), [mods]);
+
     const filteredMods = useMemo(() => {
         if (!search) return mods;
         const q = search.toLowerCase();
         return mods.filter((m) => m.mod_id.toLowerCase().includes(q) || m.workshop_id.toLowerCase().includes(q));
     }, [mods, search]);
+
+    function getMissingDeps(mod: ModEntry): string[] {
+        const info = enriched?.[mod.workshop_id];
+        if (!info) return [];
+        return info.dependency_ids.filter((id) => !installedWorkshopIds.has(id));
+    }
+
+    async function lookupWorkshopId(id: string) {
+        if (!id.trim()) {
+            setAddAllModIds([]);
+            return;
+        }
+        setAddLookupLoading(true);
+        try {
+            const res = await fetch('/admin/mods/import/lookup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                body: JSON.stringify({ url: id.trim() }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const item = data.items?.[0];
+                if (item?.detected_mod_id) {
+                    setModId((prev) => prev || item.detected_mod_id);
+                }
+                // Collect all mod IDs from enriched data if available
+                const enrichedItem = enriched?.[id.trim()];
+                if (enrichedItem?.all_mod_ids?.length) {
+                    setAddAllModIds(enrichedItem.all_mod_ids);
+                } else {
+                    setAddAllModIds([]);
+                }
+            }
+        } catch {
+            // Silent — not critical
+        }
+        setAddLookupLoading(false);
+    }
+
+    const uninstalledHintModIds = useMemo(() => {
+        if (addAllModIds.length <= 1) return [];
+        return addAllModIds.filter((id) => !installedModIds.has(id));
+    }, [addAllModIds, installedModIds]);
 
     async function addMod() {
         if (modId.includes(';')) {
@@ -75,6 +142,7 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
         setModId('');
         setMapFolder('');
         setModIdError('');
+        setAddAllModIds([]);
         router.reload({ only: ['mods'] });
     }
 
@@ -224,47 +292,78 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
                     </CardHeader>
                     <CardContent>
                         {filteredMods.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[50px]">#</TableHead>
-                                        <TableHead>Mod ID</TableHead>
-                                        <TableHead className="hidden sm:table-cell">Workshop ID</TableHead>
-                                        <TableHead className="hidden sm:table-cell">Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredMods.map((mod) => (
-                                        <TableRow key={`${mod.workshop_id}-${mod.position}`}>
-                                            <TableCell className="font-mono text-xs text-muted-foreground">
-                                                {mod.position + 1}
-                                            </TableCell>
-                                            <TableCell className="font-medium">{mod.mod_id}</TableCell>
-                                            <TableCell className="hidden sm:table-cell">
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {mod.workshop_id}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="hidden sm:table-cell">
-                                                <Badge variant="default" className="bg-green-600 text-xs hover:bg-green-600">
-                                                    In INI
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() => setDeleteTarget(mod)}
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </TableCell>
+                            <TooltipProvider>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[50px]">#</TableHead>
+                                            <TableHead>Mod ID</TableHead>
+                                            <TableHead className="hidden sm:table-cell">Workshop ID</TableHead>
+                                            <TableHead className="hidden sm:table-cell">Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredMods.map((mod) => {
+                                            const missingDeps = getMissingDeps(mod);
+                                            const hasMissingDeps = missingDeps.length > 0;
+                                            const enrichmentLoaded = enriched !== undefined;
+
+                                            return (
+                                                <TableRow
+                                                    key={`${mod.workshop_id}-${mod.position}`}
+                                                    className={hasMissingDeps ? 'bg-destructive/5' : undefined}
+                                                >
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">
+                                                        {mod.position + 1}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">{mod.mod_id}</TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        <Badge variant="secondary" className="text-xs">
+                                                            {mod.workshop_id}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        {!enrichmentLoaded ? (
+                                                            <Skeleton className="h-5 w-20 rounded-full" />
+                                                        ) : hasMissingDeps ? (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Badge variant="destructive" className="cursor-help text-xs">
+                                                                        Missing deps
+                                                                    </Badge>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="max-w-xs">
+                                                                    <p className="mb-1 font-semibold">Required dependencies not installed:</p>
+                                                                    <ul className="space-y-0.5">
+                                                                        {missingDeps.map((id) => (
+                                                                            <li key={id} className="font-mono text-xs">{id}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            <Badge variant="default" className="bg-green-600 text-xs hover:bg-green-600">
+                                                                In INI
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-destructive hover:text-destructive"
+                                                            onClick={() => setDeleteTarget(mod)}
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </TooltipProvider>
                         ) : (
                             <p className="py-8 text-center text-muted-foreground">
                                 {search ? 'No mods match your search' : 'No mods installed'}
@@ -275,7 +374,7 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
             </div>
 
             {/* Add Mod Dialog */}
-            <Dialog open={showAdd} onOpenChange={setShowAdd}>
+            <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) { setAddAllModIds([]); setModIdError(''); } }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Add Mod</DialogTitle>
@@ -289,10 +388,23 @@ export default function Mods({ mods, ini_file, ini_exists, ini_misaligned }: { m
                             <Input
                                 id="workshop-id"
                                 value={workshopId}
-                                onChange={(e) => setWorkshopId(e.target.value)}
+                                onChange={(e) => { setWorkshopId(e.target.value); setAddAllModIds([]); }}
+                                onBlur={(e) => lookupWorkshopId(e.target.value)}
                                 placeholder="e.g. 2313387159"
                             />
+                            {addLookupLoading && <p className="text-xs text-muted-foreground">Checking Workshop...</p>}
                         </div>
+                        {uninstalledHintModIds.length > 1 && (
+                            <Alert>
+                                <Info className="size-4" />
+                                <AlertTitle>Multiple mod IDs detected</AlertTitle>
+                                <AlertDescription>
+                                    This workshop item contains {addAllModIds.length} mod IDs:{' '}
+                                    {addAllModIds.map((id) => <code key={id} className="mx-0.5 rounded bg-muted px-1">{id}</code>)}.
+                                    Add them as separate entries to enable all features.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="mod-id">Mod ID</Label>
                             <Input

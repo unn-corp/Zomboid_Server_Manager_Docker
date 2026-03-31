@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogger;
 use App\Services\ModManager;
+use App\Services\SteamWorkshopService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +16,7 @@ class ModController extends Controller
     public function __construct(
         private readonly ModManager $modManager,
         private readonly AuditLogger $auditLogger,
+        private readonly SteamWorkshopService $steam,
     ) {}
 
     public function index(): Response
@@ -36,6 +38,12 @@ class ModController extends Controller
             'ini_file' => basename($iniPath),
             'ini_exists' => $iniExists,
             'ini_misaligned' => $iniMisaligned,
+            'enriched' => Inertia::defer(function () use ($mods) {
+                $ids = array_values(array_unique(array_column($mods, 'workshop_id')));
+                $items = $this->steam->fetchEnrichedItems($ids);
+
+                return collect($items)->keyBy('workshop_id');
+            }),
         ]);
     }
 
