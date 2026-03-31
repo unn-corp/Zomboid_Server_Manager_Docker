@@ -8,6 +8,7 @@ use App\Http\Requests\Api\ServerLogsRequest;
 use App\Jobs\RestartGameServer;
 use App\Jobs\SendServerWarning;
 use App\Jobs\UpdateGameServer;
+use App\Jobs\WipeGameServer;
 use App\Services\AuditLogger;
 use App\Services\DockerManager;
 use App\Services\GameVersionReader;
@@ -276,6 +277,21 @@ class ServerController
         return response()->json([
             'success' => $exitCode === 0,
             'output' => trim($output),
+        ]);
+    }
+
+    public function wipe(Request $request): JsonResponse
+    {
+        $request->validate([
+            'map_only' => ['sometimes', 'boolean'],
+        ]);
+
+        $mapOnly = (bool) $request->input('map_only', false);
+
+        WipeGameServer::dispatch($request->ip(), $mapOnly);
+
+        return response()->json([
+            'message' => $mapOnly ? 'Map wipe in progress (characters preserved)' : 'Full wipe in progress',
         ]);
     }
 }
