@@ -89,6 +89,10 @@ The Laravel app is the single control plane wrapping three integration points:
 - **Docker Engine API** (`Services/DockerManager.php`) — HTTP calls to `/var/run/docker.sock`. Start/stop/restart game server container.
 - **File I/O** (`Services/ServerIniParser.php`, `Services/SandboxLuaParser.php`) — Read/write PZ config files mounted from game server volume.
 
+## Dokploy Deployment
+
+Every commit to `main` triggers an automatic deploy in Dokploy. Builds take ~30 seconds. When testing changes programmatically, Claude can `sleep 30` after pushing a commit, then follow up with API calls to verify. Just sleep-and-retry until the deploy is live.
+
 ## Key Design Constraints
 
 - API must never crash when the game server is offline — return status, not 500s
